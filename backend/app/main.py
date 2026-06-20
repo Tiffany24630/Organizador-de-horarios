@@ -6,6 +6,10 @@ from app.models.person import Person
 from app.models.activity import Activity
 from app.models.space import Space
 from app.models.time_block import TimeBlock
+from app.models.activity_group import ActivityGroup
+from app.models.group_participant import GroupParticipant
+from app.models.restriction import Restriction
+from app.models.space_reservation import SpaceReservation
 from app.api.routes.person_routes import router as person_router
 from app.api.routes.activity_routes import router as activity_router
 from app.api.routes.space_routes import router as space_router
@@ -14,7 +18,7 @@ from app.api.routes.time_block_routes import (router as time_block_router)
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="Organizador de horariso API",
+    title="Organizador de horarios API",
     description="""
 API para la gestión inteligente de horarios colaborativos.
 
