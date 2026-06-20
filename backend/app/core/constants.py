@@ -1,0 +1,1 @@
+SLOT_MINUTES = 20

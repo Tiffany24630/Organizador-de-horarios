@@ -21,5 +21,7 @@ class ActivityGroup(Base):
     start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    
     participants = relationship("GroupParticipant", back_populates="group", cascade="all, delete-orphan")
     restrictions = relationship("Restriction", back_populates="group", cascade="all, delete-orphan")
+    schedules = relationship("ProposedSchedule", cascade="all, delete-orphan")
