@@ -15,3 +15,4 @@ class Activity(Base):
     type: Mapped[str] = mapped_column(String(50))
     description: Mapped[str | None] = mapped_column(String(250), nullable=True)
     person = relationship("Person", back_populates="activities")
+    time_blocks = relationship("TimeBlock", back_populates="activity", cascade="all, delete")
