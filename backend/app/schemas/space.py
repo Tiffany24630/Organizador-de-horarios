@@ -4,6 +4,10 @@ class SpaceCreate(BaseModel):
     name: str
     capacity: int
 
+class SpaceUpdate(BaseModel):
+    name: str
+    capacity: int
+
 class SpaceResponse(BaseModel):
     id_space: int
     name: str
