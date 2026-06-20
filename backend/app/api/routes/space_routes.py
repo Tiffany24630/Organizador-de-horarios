@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from fastapi import Depends
 from sqlalchemy.orm import Session
-from streamlit import status
+from fastapi import status
 from app.database.connection import get_db
 from app.models.space import Space
 from app.schemas.space import (SpaceCreate, SpaceResponse)

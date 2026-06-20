@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.database.base import Base
 from app.database.connection import engine
 from app.models.person import Person
@@ -26,6 +27,13 @@ Características:
 
 Desarrollado con FastAPI.
 """
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins = ["http://localhost:5173"],
+    allow_methods = ["*"],
+    allow_headers = ["*"]
 )
 
 @app.get("/health")
