@@ -4,6 +4,8 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import Time
 from sqlalchemy.orm import Mapped
+from sqlalchemy import Enum
+from app.models.enums import RestrictionType
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from app.database.base import Base
@@ -17,4 +19,5 @@ class Restriction(Base):
     description: Mapped[str | None] = mapped_column(String(500), nullable=True)
     start_time: Mapped[time | None] = mapped_column(Time, nullable=True)
     end_time: Mapped[time | None] = mapped_column(Time, nullable=True)
+    type: Mapped[RestrictionType] = mapped_column(Enum(RestrictionType))
     group = relationship("ActivityGroup", back_populates="restrictions")

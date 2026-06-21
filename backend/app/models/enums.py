@@ -13,3 +13,8 @@ class ProposalStatus(str, Enum):
     PENDING = "PENDING"
     ACCEPTED = "ACCEPTED"
     REJECTED = "REJECTED"
+
+class RestrictionType(str, Enum):
+    ALLOWED_HOURS = "ALLOWED_HOURS"
+    FORBIDDEN_HOURS = "FORBIDDEN_HOURS"
+    FORBIDDEN_DAY = "FORBIDDEN_DAYS"

@@ -4,3 +4,5 @@ sqlalchemy
 pydantic
 python-multipart
 email-validator
+easyocr
+pydantic-ai

@@ -9,7 +9,6 @@ from sqlalchemy.orm import relationship
 from app.database.base import Base
 from app.models.enums import DayOfWeek
 
-
 class ProposedSession(Base):
     __tablename__ = "proposed_sessions"
 

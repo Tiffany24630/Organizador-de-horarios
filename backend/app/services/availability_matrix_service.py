@@ -2,6 +2,7 @@ from datetime import datetime
 from datetime import timedelta
 from datetime import datetime
 from backend.app.models.enums import DayOfWeek
+from app.core.constants import SLOT_MINUTES
 from app.services.availability_service import (get_group_people, get_busy_blocks)
 
 def generate_time_slots(start="06:00", end="23:00"):
@@ -13,7 +14,7 @@ def generate_time_slots(start="06:00", end="23:00"):
     while current < limit:
         slots.append(current.strftime("%H:%M"))
 
-        current += timedelta(minutes=10)
+        current += timedelta(minutes=SLOT_MINUTES)
 
     return slots
 
