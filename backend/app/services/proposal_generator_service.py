@@ -21,7 +21,7 @@ from app.services.attendance_engine import calculate_person_minutes
 def build_candidate_sessions(matrix, duration_minutes, minimum_people):
     candidates = []
 
-    slots_needed = duration_minutes // SLOT_MINUTES
+    slots_needed = (duration_minutes + SLOT_MINUTES - 1) // SLOT_MINUTES
 
     for day in matrix:
         slots = list(matrix[day].keys())
@@ -111,6 +111,8 @@ def generate_proposals(group_id: int, db: Session):
     if not group:
         raise ValueError("Group not found")
     
+    total_people = len(group.participants)
+
     if total_people == 0:
         raise ValueError("Group has no participants")
     
@@ -118,7 +120,6 @@ def generate_proposals(group_id: int, db: Session):
     matrix = apply_restrictions(matrix, group)
     reservations = (db.query(SpaceReservation).all())
     matrix = apply_space_restrictions(matrix, reservations)
-    total_people = len(group.participants)
     minimum_people = max(1, total_people // 2)
     candidates = build_candidate_sessions(matrix, group.duration_minutes, minimum_people)
     pairs = build_session_combinations(candidates, group.sessions_per_week)

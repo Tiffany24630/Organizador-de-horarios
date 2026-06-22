@@ -5,6 +5,7 @@ from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from app.database.base import Base
+from sqlalchemy import Integer
 
 class ProposalAttendance(Base):
     __tablename__ = "proposal_attendance"
@@ -14,7 +15,7 @@ class ProposalAttendance(Base):
     person_id: Mapped[int] = mapped_column(ForeignKey("persons.id_person", ondelete="CASCADE"))
     can_attend: Mapped[bool] = mapped_column(Boolean)
 
-    available_minutes: Mapped[int]
+    available_minutes: Mapped[int] = mapped_column(Integer)
 
     proposal = relationship("ProposedSchedule")
     person = relationship("Person")

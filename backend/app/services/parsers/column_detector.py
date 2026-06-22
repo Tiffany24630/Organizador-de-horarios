@@ -1,51 +1,62 @@
-COLUMN_ALIASES = {
-    "activity": [
-        "actividad",
-        "curso",
-        "materia",
-        "clase",
-        "evento",
-        "actividad nombre",
-        "subject",
-        "activity"
-    ],
+ACTIVITY_NAMES = [
+    "actividad",
+    "activity",
+    "curso",
+    "course",
+    "materia",
+    "subject",
+    "evento",
+    "event",
+    "nombre"
+]
 
-    "day": [
-        "dia",
-        "día",
-        "day"
-    ],
+DAY_NAMES = [
+    "dia",
+    "día",
+    "day"
+]
 
-    "start": [
-        "inicio",
-        "hora inicio",
-        "entrada",
-        "start",
-        "start time"
-    ],
+START_NAMES = [
+    "inicio",
+    "hora inicio",
+    "start",
+    "desde",
+    "entrada"
+]
 
-    "end": [
-        "fin",
-        "hora fin",
-        "salida",
-        "end",
-        "end time"
-    ]
-}
+END_NAMES = [
+    "fin",
+    "hora fin",
+    "end",
+    "hasta",
+    "salida"
+]
 
-def detect_columns(df):
-    result = {}
 
-    columns = [str(col).strip().lower()
-        for col in df.columns
-    ]
+def find_match(column, aliases):
+    column = column.lower().strip()
 
-    for field, aliases in COLUMN_ALIASES.items():
-        result[field] = None
+    for alias in aliases:
+        if alias in column:
+            return True
 
-        for column in columns:
-            if column in aliases:
-                result[field] = column
-                break
+    return False
 
-    return result
+
+def detect_columns(columns):
+    mapping = {}
+
+    for column in columns:
+        if find_match(column, ACTIVITY_NAMES):
+            mapping["activity"] = column
+
+        elif find_match(column, DAY_NAMES):
+            mapping["day"] = column
+
+        elif find_match(column, START_NAMES):
+            mapping["start"] = column
+
+        elif find_match(column, END_NAMES):
+            mapping["end"] = column
+
+    return mapping

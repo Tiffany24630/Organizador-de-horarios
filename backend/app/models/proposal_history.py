@@ -14,6 +14,6 @@ class ProposalHistory(Base):
     id_history: Mapped[int] = mapped_column(Integer, primary_key=True)
     proposal_id: Mapped[int] = mapped_column(ForeignKey("proposed_schedules.id_schedule", ondelete="CASCADE"))
     action: Mapped[str] = mapped_column(String(50))
-    created_at: Mapped[datetime] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     proposal = relationship("ProposedSchedule")
