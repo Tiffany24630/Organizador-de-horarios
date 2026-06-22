@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from fastapi import status
 from app.database.connection import get_db
 from app.models.space import Space
-from app.schemas.space import (SpaceCreate, SpaceResponse)
+from app.schemas.space import SpaceCreate, SpaceResponse
 
 router = APIRouter(
     prefix="/spaces",

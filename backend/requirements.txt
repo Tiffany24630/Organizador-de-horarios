@@ -6,3 +6,7 @@ python-multipart
 email-validator
 easyocr
 pydantic-ai
+pandas 
+openpyxl
+pdfplumber
+pytesseract

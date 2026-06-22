@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.database.connection import get_db
 from app.models.restriction import Restriction
-from app.schemas.restriction import (RestrictionCreate, RestrictionResponse)
+from app.schemas.restriction import RestrictionCreate, RestrictionResponse
 
 router = APIRouter(prefix="/restrictions", tags=["Restrictions"])
 

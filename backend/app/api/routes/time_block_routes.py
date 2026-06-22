@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.database.connection import get_db
 from app.models.time_block import TimeBlock
 from app.models.activity import Activity
-from app.schemas.time_block import (TimeBlockCreate, TimeBlockUpdate, TimeBlockResponse)
+from app.schemas.time_block import TimeBlockCreate, TimeBlockUpdate, TimeBlockResponse
 
 router = APIRouter(prefix="/time-blocks", tags=["Time Blocks"])
 

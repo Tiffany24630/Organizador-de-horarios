@@ -5,7 +5,7 @@ from fastapi import status
 from sqlalchemy.orm import Session
 from app.database.connection import get_db
 from app.models.person import Person
-from app.schemas.person import (PersonCreate, PersonUpdate, PersonResponse)
+from app.schemas.person import PersonCreate, PersonUpdate, PersonResponse
 
 router = APIRouter(prefix="/people", tags=["People"])
 

@@ -16,9 +16,10 @@ class ProposedSchedule(Base):
     group_id: Mapped[int] = mapped_column(ForeignKey("activity_groups.id_group", ondelete="CASCADE"))
     name: Mapped[str] = mapped_column(String(100))
 
-    attendance_percentage: Mapped[float]
     attendances = relationship("ProposalAttendance", cascade="all, delete-orphan")
-    score: Mapped[float]
+    
+    attendance_percentage: Mapped[float] = mapped_column(Float)
+    score: Mapped[float] = mapped_column(Float)
 
     status: Mapped[ProposalStatus] = mapped_column(Enum(ProposalStatus), default=ProposalStatus.PENDING)
 

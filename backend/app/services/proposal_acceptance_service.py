@@ -22,3 +22,20 @@ def accept_proposal(proposal_id, db):
         "message":
         "Proposal accepted"
     }
+
+def reject_proposal(proposal_id, db):
+    proposal = db.get(ProposedSchedule, proposal_id)
+
+    if not proposal:
+        raise ValueError("Proposal not found")
+
+    proposal.status = ProposalStatus.REJECTED
+    history = ProposalHistory(proposal_id=proposal_id, action="REJECTED", created_at=datetime.utcnow())
+
+    db.add(history)
+    db.commit()
+
+    return {
+        "message":
+        "Proposal rejected"
+    }
