@@ -18,12 +18,13 @@ from app.models.proposed_session import ProposedSession
 from app.api.routes.person_routes import router as person_router
 from app.api.routes.activity_routes import router as activity_router
 from app.api.routes.space_routes import router as space_router
-from app.api.routes.time_block_routes import (router as time_block_router)
-from app.api.routes.availability_routes import (router as availability_router)
-from app.api.routes.proposal_routes import (router as proposal_router)
+from app.api.routes.time_block_routes import router as time_block_router
+from app.api.routes.availability_routes import router as availability_router
+from app.api.routes.proposal_routes import router as proposal_router
 from app.api.routes.group_routes import router as group_router
 from app.api.routes.group_participant_routes import router as group_participant_router
 from app.api.routes.restriction_routes import router as restriction_router
+from app.api.routes.import_routes import router as import_router
 from app.api.routes.space_reservation_routes import router as space_reservation_router
 
 Base.metadata.create_all(bind=engine)
@@ -66,7 +67,7 @@ app.include_router(time_block_router)
 app.include_router(availability_router)
 app.include_router(proposal_router)
 app.include_router(group_router)
-app.include_router(group_router)
 app.include_router(group_participant_router)
 app.include_router(restriction_router)
 app.include_router(space_reservation_router)
+app.include_router(import_router)

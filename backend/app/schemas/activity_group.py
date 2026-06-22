@@ -1,6 +1,5 @@
 from datetime import date
 from pydantic import BaseModel
-from sqlalchemy.orm import relationship
 
 class ActivityGroupCreate(BaseModel):
     name: str

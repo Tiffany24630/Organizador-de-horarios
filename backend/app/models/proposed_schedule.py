@@ -8,6 +8,7 @@ from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from app.database.base import Base
+from sqlalchemy import Float
 
 class ProposedSchedule(Base):
     __tablename__ = "proposed_schedules"
