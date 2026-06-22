@@ -8,7 +8,6 @@ from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from app.database.base import Base
 
-
 class ActivityGroup(Base):
     __tablename__ = "activity_groups"
 

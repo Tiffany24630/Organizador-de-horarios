@@ -6,7 +6,6 @@ from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from app.database.base import Base
 
-
 class Person(Base):
     __tablename__ = "persons"
 

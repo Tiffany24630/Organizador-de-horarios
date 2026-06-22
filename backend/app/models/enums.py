@@ -17,4 +17,4 @@ class ProposalStatus(str, Enum):
 class RestrictionType(str, Enum):
     ALLOWED_HOURS = "ALLOWED_HOURS"
     FORBIDDEN_HOURS = "FORBIDDEN_HOURS"
-    FORBIDDEN_DAY = "FORBIDDEN_DAYS"
+    FORBIDDEN_DAY = "FORBIDDEN_DAY"

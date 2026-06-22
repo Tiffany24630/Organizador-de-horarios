@@ -9,7 +9,6 @@ from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from app.database.base import Base
 
-
 class ProposedSchedule(Base):
     __tablename__ = "proposed_schedules"
 
@@ -18,6 +17,7 @@ class ProposedSchedule(Base):
     name: Mapped[str] = mapped_column(String(100))
 
     attendance_percentage: Mapped[float]
+    attendances = relationship("ProposalAttendance", cascade="all, delete-orphan")
     score: Mapped[float]
 
     status: Mapped[ProposalStatus] = mapped_column(Enum(ProposalStatus), default=ProposalStatus.PENDING)

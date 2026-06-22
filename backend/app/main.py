@@ -16,6 +16,11 @@ from app.api.routes.space_routes import router as space_router
 from app.api.routes.time_block_routes import (router as time_block_router)
 from app.api.routes.availability_routes import (router as availability_router)
 from app.api.routes.proposal_routes import (router as proposal_router)
+from app.models.proposal_attendance import ProposalAttendance
+from app.models.accepted_schedule import AcceptedSchedule
+from app.models.proposal_history import ProposalHistory
+from app.models.proposed_schedule import ProposedSchedule
+from app.models.proposed_session import ProposedSession
 
 Base.metadata.create_all(bind=engine)
 
@@ -56,3 +61,4 @@ app.include_router(space_router)
 app.include_router(time_block_router)
 app.include_router(availability_router)
 app.include_router(proposal_router)
+app.include_router(group_router)
