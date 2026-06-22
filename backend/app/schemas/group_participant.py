@@ -5,9 +5,11 @@ class GroupParticipantCreate(BaseModel):
     person_id: int
     required: bool = True
 
-class GroupParticipantResponse(GroupParticipantCreate):
+class GroupParticipantResponse(BaseModel):
     id_participant: int
+    group_id: int
+    person_id: int
+    required: bool
 
-    model_config = {
-        "from_attributes": True
-    }
+    class Config:
+        from_attributes = True

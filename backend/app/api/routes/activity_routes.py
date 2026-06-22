@@ -3,7 +3,7 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 from app.database.connection import get_db
 from app.models.activity import Activity
-from app.schemas.activity import (ActivityCreate, ActivityResponse)
+from app.schemas.activity import ActivityCreate, ActivityResponse
 
 router = APIRouter(
     prefix="/activities",

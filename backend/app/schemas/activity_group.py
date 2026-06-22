@@ -4,22 +4,31 @@ from sqlalchemy.orm import relationship
 
 class ActivityGroupCreate(BaseModel):
     name: str
-
     description: str | None = None
-
     sessions_per_week: int
     duration_minutes: int
     minimum_attendance_minutes: int
-
     start_date: date | None = None
     end_date: date | None = None
 
-    schedules = relationship("ProposedSchedule", cascade="all, delete-orphan")
+class ActivityGroupUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    sessions_per_week: int | None = None
+    duration_minutes: int | None = None
+    minimum_attendance_minutes: int | None = None
+    start_date: date | None = None
+    end_date: date | None = None
+    active: bool | None = None
 
-class ActivityGroupResponse(ActivityGroupCreate):
+class ActivityGroupResponse(BaseModel):
     id_group: int
+    name: str
+    description: str | None
+    sessions_per_week: int
+    duration_minutes: int
+    minimum_attendance_minutes: int
     active: bool
 
-    model_config = {
-        "from_attributes": True
-    }
+    class Config:
+        from_attributes = True

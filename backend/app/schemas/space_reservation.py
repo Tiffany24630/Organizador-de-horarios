@@ -7,11 +7,15 @@ class SpaceReservationCreate(BaseModel):
     day_of_week: DayOfWeek
     start_time: time
     end_time: time
+
     description: str | None = None
 
-class SpaceReservationResponse(SpaceReservationCreate):
+class SpaceReservationResponse(BaseModel):
     id_reservation: int
+    space_id: int
+    day_of_week: DayOfWeek
+    start_time: time
+    end_time: time
 
-    model_config = {
-        "from_attributes": True
-    }
+    class Config:
+        from_attributes = True
