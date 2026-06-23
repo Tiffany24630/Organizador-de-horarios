@@ -3,7 +3,7 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from app.database.connection import get_db
-from app.models.proposed_session import ProposedSession
+from app.models.proposed_schedule import ProposedSchedule
 from app.services.proposal_management_service import accept_proposal
 from app.services.proposal_generator_service import generate_proposals
 
