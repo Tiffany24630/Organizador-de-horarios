@@ -10,9 +10,7 @@ from app.schemas.time_block import TimeBlockCreate, TimeBlockUpdate, TimeBlockRe
 router = APIRouter(prefix="/time-blocks", tags=["Time Blocks"])
 
 @router.get("/", response_model=list[TimeBlockResponse])
-def get_blocks(
-    db: Session = Depends(get_db)
-):
+def get_blocks(db: Session = Depends(get_db)):
     return db.query(TimeBlock).all()
 
 

@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from app.models.enums import ProposalStatus
 
 class ProposalResponse(BaseModel):
     id_schedule: int
@@ -6,7 +7,7 @@ class ProposalResponse(BaseModel):
     name: str
     attendance_percentage: float
     score: float
-    status: str
+    status: ProposalStatus
 
     class Config:
         from_attributes = True

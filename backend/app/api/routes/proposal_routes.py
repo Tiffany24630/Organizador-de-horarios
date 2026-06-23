@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from app.database.connection import get_db
 from app.models.proposed_schedule import ProposedSchedule
+from app.services.proposal_management_service import reject_proposal
 from app.services.proposal_management_service import accept_proposal
 from app.services.proposal_generator_service import generate_proposals
 
@@ -26,3 +27,29 @@ def accept(proposal_id: int, db: Session = Depends(get_db)):
         "message": "Proposal accepted"
     }
 
+@router.get("/")
+def get_proposals(db: Session = Depends(get_db)):
+    return db.query(ProposedSchedule).all()
+
+
+@router.get("/{proposal_id}")
+def get_proposal(proposal_id: int, db: Session = Depends(get_db)):
+    proposal = db.get(ProposedSchedule, proposal_id)
+
+    if not proposal:
+        raise HTTPException(404, "Proposal not found")
+
+    return proposal
+
+@router.put("/{proposal_id}/reject")
+def reject(proposal_id: int, db: Session = Depends(get_db)):
+    proposal = db.get(ProposedSchedule, proposal_id)
+
+    if not proposal:
+        raise HTTPException(404, "Proposal not found")
+
+    reject_proposal(proposal, db)
+
+    return {
+        "message": "Proposal rejected"
+    }

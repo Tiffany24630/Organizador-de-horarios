@@ -5,10 +5,7 @@ from app.database.connection import get_db
 from app.models.activity import Activity
 from app.schemas.activity import ActivityCreate, ActivityResponse
 
-router = APIRouter(
-    prefix="/activities",
-    tags=["Activities"]
-)
+router = APIRouter(prefix="/activities", tags=["Activities"])
 
 @router.get("/", response_model=list[ActivityResponse])
 def get_activities(
