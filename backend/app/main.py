@@ -28,6 +28,8 @@ from app.api.routes.import_routes import router as import_router
 from app.api.routes.space_reservation_routes import router as space_reservation_router
 from app.api.routes.proposal_attendance_routes import router as proposal_attendance_router
 from app.api.routes.proposed_session_routes import router as proposed_session_router
+from app.api.routes.accepted_schedule_routes import router as accepted_schedule_router
+from app.api.routes.proposal_history_routes import router as proposal_history_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -62,6 +64,14 @@ def health():
         "status": "ok"
     }
 
+@app.get("/")
+def root():
+    return {
+        "application": "Organizador de Horarios",
+        "version": "1.0.0",
+        "docs": "/docs"
+    }
+
 app.include_router(person_router)
 app.include_router(activity_router)
 app.include_router(space_router)
@@ -75,3 +85,5 @@ app.include_router(space_reservation_router)
 app.include_router(import_router)
 app.include_router(proposal_attendance_router)
 app.include_router(proposed_session_router)
+app.include_router(accepted_schedule_router)
+app.include_router(proposal_history_router)

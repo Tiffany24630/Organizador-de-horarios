@@ -26,17 +26,11 @@ def get_person(person_id: int, db: Session = Depends(get_db)):
     return person
 
 @router.post("/", response_model=PersonResponse, status_code=status.HTTP_201_CREATED)
-def create_person(
-    person: PersonCreate,
-    db: Session = Depends(get_db)
-):
+def create_person(person: PersonCreate, db: Session = Depends(get_db)):
     exists = db.query(Person).filter(Person.email == person.email).first()
 
     if exists:
-        raise HTTPException(
-            status_code = 400,
-            detail = "Person with this email already exists"
-        )
+        raise HTTPException(status_code = 400, detail = "Person with this email already exists")
 
     new_person = Person(name=person.name, email=person.email)
 

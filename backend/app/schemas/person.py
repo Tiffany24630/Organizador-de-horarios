@@ -16,9 +16,9 @@ class PersonCreate(BaseModel):
     )
 
 class PersonUpdate(BaseModel):
-    name: str 
-    email: EmailStr 
-    active: bool
+    name: str | None = None
+    email: EmailStr | None = None
+    active: bool | None = None
 
 class PersonResponse(BaseModel):
     id_person: int
