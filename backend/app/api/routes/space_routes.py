@@ -27,10 +27,7 @@ def get_space(space_id: int, db: Session = Depends(get_db)):
     space = db.get(Space, space_id)
 
     if not space:
-        raise HTTPException(
-            status_code = 404,
-            detail = "Space not found"
-        )
+        raise HTTPException(status_code = 404, detail = "Space not found")
 
     return space
 
@@ -52,15 +49,12 @@ def update_space(space_id: int, space_data: SpaceCreate, db: Session = Depends(g
 
     return space
 
-@router.delete("/{space_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{space_id}", status_code = 200)
 def delete_space(space_id: int, db: Session = Depends(get_db)):
     space = db.get(Space, space_id)
 
     if not space:
-        raise HTTPException(
-            status_code = 404,
-            detail = "Space not found"
-        )
+        raise HTTPException(status_code = 404, detail = "Space not found")
 
     db.delete(space)
     db.commit()

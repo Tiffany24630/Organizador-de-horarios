@@ -12,6 +12,11 @@ router = APIRouter(prefix="/group-participants", tags=["Group Participants"])
 def create_participant(data: GroupParticipantCreate, db: Session = Depends(get_db)):
     participant = GroupParticipant(**data.model_dump())
 
+    exists = db.query(GroupParticipant).filter(GroupParticipant.group_id == data.group_id, GroupParticipant.person_id == data.person_id).first()
+
+    if exists:
+        raise HTTPException(400, "Participant already exists in group")
+
     db.add(participant)
     db.commit()
     db.refresh(participant)

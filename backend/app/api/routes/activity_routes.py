@@ -58,7 +58,7 @@ def update_activity(activity_id: int, activity_data: ActivityCreate, db: Session
 
     return activity
 
-@router.delete("/{activity_id}", status_code=204)
+@router.delete("/{activity_id}", status_code=200)
 def delete_activity(activity_id: int, db: Session = Depends(get_db)):
     activity = db.get(Activity, activity_id)
 

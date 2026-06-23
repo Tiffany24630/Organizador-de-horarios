@@ -18,10 +18,7 @@ def get_person(person_id: int, db: Session = Depends(get_db)):
     person = db.get(Person, person_id)
 
     if not person:
-        raise HTTPException(
-            status_code = 404,
-            detail = "Person not found"
-        )
+        raise HTTPException(status_code = 404, detail = "Person not found")
 
     return person
 
@@ -45,10 +42,12 @@ def update_person(person_id: int, person_data: PersonUpdate, db: Session = Depen
     person = db.get(Person, person_id)
 
     if not person:
-        raise HTTPException(
-            status_code = 404,
-            detail = "Person not found"
-        )
+        raise HTTPException(status_code = 404, detail = "Person not found")
+
+    existing = db.query(Person).filter(Person.email == person_data.email, Person.id_person != person_id).first()
+
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already in use")
 
     person.name = person_data.name
     person.email = person_data.email
@@ -64,10 +63,7 @@ def delete_person(person_id: int, db: Session = Depends(get_db)):
     person = db.get(Person, person_id)
 
     if not person:
-        raise HTTPException(
-            status_code = 404,
-            detail = "Person not found"
-        )
+        raise HTTPException(status_code = 404, detail = "Person not found")
 
     db.delete(person)
     db.commit()

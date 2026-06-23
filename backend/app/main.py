@@ -15,6 +15,7 @@ from app.models.accepted_schedule import AcceptedSchedule
 from app.models.proposal_history import ProposalHistory
 from app.models.proposed_schedule import ProposedSchedule
 from app.models.proposed_session import ProposedSession
+from app.api.routes.statistics_routes import router as statistics_router
 from app.api.routes.person_routes import router as person_router
 from app.api.routes.activity_routes import router as activity_router
 from app.api.routes.space_routes import router as space_router
@@ -87,3 +88,4 @@ app.include_router(proposal_attendance_router)
 app.include_router(proposed_session_router)
 app.include_router(accepted_schedule_router)
 app.include_router(proposal_history_router)
+app.include_router(statistics_router)
