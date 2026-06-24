@@ -10,7 +10,7 @@ from app.database.base import Base
 class AcceptedSchedule(Base):
     __tablename__ = "accepted_schedules"
 
-    id_accepted: Mapped[datetime] = mapped_column(DateTime, default = datetime.utcnow)
+    id_accepted: Mapped[datetime] = mapped_column(DateTime, primary_key=True, default = datetime.utcnow)
     proposal_id: Mapped[int] = mapped_column(ForeignKey("proposed_schedules.id_schedule"))
     accepted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 

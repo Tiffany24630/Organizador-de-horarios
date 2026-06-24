@@ -8,7 +8,6 @@ from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from app.database.base import Base
-from sqlalchemy import Float
 
 class ProposedSchedule(Base):
     __tablename__ = "proposed_schedules"
@@ -24,5 +23,5 @@ class ProposedSchedule(Base):
 
     status: Mapped[ProposalStatus] = mapped_column(Enum(ProposalStatus), default=ProposalStatus.PENDING)
 
-    group = relationship("ActivityGroup")
+    group = relationship("ActivityGroup", back_populates="schedules")
     sessions = relationship("ProposedSession", cascade="all, delete-orphan", back_populates="schedule")

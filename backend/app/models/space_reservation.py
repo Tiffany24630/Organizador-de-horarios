@@ -19,4 +19,4 @@ class SpaceReservation(Base):
     start_time: Mapped[time] = mapped_column(Time)
     end_time: Mapped[time] = mapped_column(Time)
     description: Mapped[str | None] = mapped_column(String(250), nullable=True)
-    space = relationship("Space")
+    space = relationship("Space", back_populates="reservations")

@@ -14,3 +14,4 @@ class Person(Base):
     email: Mapped[str] = mapped_column(String(150), unique=True, nullable=False)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     activities = relationship("Activity", back_populates="person", cascade="all, delete")
+    participants = relationship("GroupParticipant", back_populates="person", cascade="all, delete-orphan")

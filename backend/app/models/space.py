@@ -11,4 +11,4 @@ class Space(Base):
     id_space: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(100))
     capacity: Mapped[int] = mapped_column(Integer)
-    reservations = relationship("SpaceReservation", cascade="all, delete")
+    reservations = relationship("SpaceReservation", back_populates="space", cascade="all, delete")

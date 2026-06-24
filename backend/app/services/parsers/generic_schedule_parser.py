@@ -1,3 +1,6 @@
+from app.services.parsers.column_detector import detect_columns
+from app.services.parsers.schedule_normalizer import normalize_rows
+
 def parse_dataframe(dataframe):
     mapping = detect_columns(dataframe.columns)
 

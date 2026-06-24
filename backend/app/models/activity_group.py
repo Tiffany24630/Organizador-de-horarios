@@ -23,4 +23,4 @@ class ActivityGroup(Base):
     
     participants = relationship("GroupParticipant", back_populates="group", cascade="all, delete-orphan")
     restrictions = relationship("Restriction", back_populates="group", cascade="all, delete-orphan")
-    schedules = relationship("ProposedSchedule", cascade="all, delete-orphan")
+    schedules = relationship("ProposedSchedule", back_populates="group", cascade="all, delete-orphan")

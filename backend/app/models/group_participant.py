@@ -14,4 +14,4 @@ class GroupParticipant(Base):
     person_id: Mapped[int] = mapped_column(ForeignKey("persons.id_person", ondelete="CASCADE"))
     required: Mapped[bool] = mapped_column(Boolean, default=True)
     group = relationship("ActivityGroup", back_populates="participants")
-    person = relationship("Person")
+    person = relationship("Person", back_populates="participants")
