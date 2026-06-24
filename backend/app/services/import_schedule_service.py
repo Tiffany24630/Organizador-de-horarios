@@ -2,6 +2,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from app.models.activity import Activity
 from app.models.time_block import TimeBlock
+from app.core.logger import logger
 
 def parse_time(value):
     if hasattr(value, "time"):
@@ -38,6 +39,8 @@ def get_or_create_activity(person_id, activity_name, db):
     return activity
 
 def import_schedule( person_id, normalized_schedule, db: Session):
+    logger.info(f"Importing schedule for person {person_id}")
+    
     created_blocks = 0
 
     for row in normalized_schedule:
@@ -55,6 +58,8 @@ def import_schedule( person_id, normalized_schedule, db: Session):
         created_blocks += 1
 
     db.commit()
+
+    logger.info(f"Created {created_blocks} blocks for person {person_id}")
 
     return {
         "created_blocks": created_blocks

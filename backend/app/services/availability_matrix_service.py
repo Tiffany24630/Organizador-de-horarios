@@ -3,7 +3,7 @@ from datetime import timedelta
 from datetime import datetime
 from app.models.enums import DayOfWeek
 from app.core.constants import SLOT_MINUTES
-from app.services.availability_service import (get_group_people, get_busy_blocks)
+from app.services.availability_service import get_group_people, get_group_blocks
 
 def generate_time_slots(start="06:00", end="23:00"):
     slots = []
@@ -41,6 +41,7 @@ def slot_inside_block(slot, start_time, end_time):
 def build_matrix(group_id, db):
     matrix = create_empty_matrix()
     people = get_group_people(group_id, db)
+    group_blocks = get_group_blocks(group_id, db)
     total_people = len(people)
     slots = generate_time_slots()
 
@@ -49,7 +50,7 @@ def build_matrix(group_id, db):
             available_count = total_people
 
             for person_id in people:
-                blocks = get_busy_blocks(person_id, db)
+                blocks = group_blocks(person_id, db)
 
                 occupied = False
 

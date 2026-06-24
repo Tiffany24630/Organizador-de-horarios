@@ -9,9 +9,12 @@ from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from app.database.base import Base
 from app.models.enums import DayOfWeek
+from sqlalchemy import UniqueConstraint
 
 class SpaceReservation(Base):
     __tablename__ = "space_reservations"
+
+    __table_args__ = UniqueConstraint("space_id", "day_of_week", "start_time", "end_time", name="uq_space_reservation"),
 
     id_reservation: Mapped[int] = mapped_column(Integer, primary_key=True)
     space_id: Mapped[int] = mapped_column(ForeignKey("spaces.id_space", ondelete="CASCADE"))

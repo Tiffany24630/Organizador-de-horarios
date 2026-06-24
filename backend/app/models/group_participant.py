@@ -4,10 +4,13 @@ from sqlalchemy import Integer
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
+from sqlalchemy import UniqueConstraint
 from app.database.base import Base
 
 class GroupParticipant(Base):
     __tablename__ = "group_participants"
+
+    __table_args__ = UniqueConstraint("group_id", "person_id", name="uq_group_person"),
 
     id_participant: Mapped[int] = mapped_column(Integer, primary_key=True)
     group_id: Mapped[int] = mapped_column(ForeignKey("activity_groups.id_group", ondelete="CASCADE"))

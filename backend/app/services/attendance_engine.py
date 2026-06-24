@@ -36,3 +36,23 @@ def calculate_person_minutes(person_id, sessions, db):
 
     return available
 
+def calculate_person_minutes_from_blocks(blocks, sessions):
+    available = 0
+
+    for session in sessions:
+        session_start = datetime.strptime(session["start"], "%H:%M")
+        session_end = datetime.strptime(session["end"], "%H:%M")
+        duration = int((session_end - session_start).total_seconds() / 60)
+        occupied = 0
+
+        for block in blocks:
+            if block.day_of_week.value != session["day"]:
+                continue
+
+            block_start = datetime.strptime(block.start_time.strftime("%H:%M"), "%H:%M")
+            block_end = datetime.strptime(block.end_time.strftime("%H:%M"), "%H:%M")
+            occupied += overlap_minutes( session_start, session_end, block_start, block_end)
+
+        available += max(0, duration - occupied)
+
+    return available

@@ -15,6 +15,7 @@ from app.models.accepted_schedule import AcceptedSchedule
 from app.models.proposal_history import ProposalHistory
 from app.models.proposed_schedule import ProposedSchedule
 from app.models.proposed_session import ProposedSession
+from app.core.logger import logger
 from app.api.routes.statistics_routes import router as statistics_router
 from app.api.routes.person_routes import router as person_router
 from app.api.routes.activity_routes import router as activity_router
@@ -72,6 +73,16 @@ def root():
         "version": "1.0.0",
         "docs": "/docs"
     }
+
+@app.middleware("http")
+async def log_requests(request, call_next):
+    logger.info(f"{request.method} {request.url}")
+
+    response = await call_next(request)
+
+    logger.info(f"Status: {response.status_code}")
+
+    return response
 
 app.include_router(person_router)
 app.include_router(activity_router)

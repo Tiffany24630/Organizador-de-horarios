@@ -12,7 +12,10 @@ from app.models.proposal_attendance import ProposalAttendance
 from app.models.proposed_schedule import ProposedSchedule
 from app.models.proposed_session import ProposedSession
 from app.models.enums import ProposalStatus
+from app.core.logger import logger
 from app.utils.time_utils import str_to_time
+from app.services.availability_service import get_group_blocks
+from app.services.attendance_engine import calculate_person_minutes_from_blocks
 from app.services.restriction_engine import apply_restrictions
 from app.models.space_reservation import SpaceReservation
 from app.services.space_engine import apply_space_restrictions
@@ -107,6 +110,7 @@ def build_session_combinations(candidates, sessions_per_week):
 
 def generate_proposals(group_id: int, db: Session):
     group = db.get(ActivityGroup, group_id)
+    group_blocks = get_group_blocks(group_id, db)
 
     if not group:
         raise ValueError("Group not found")
@@ -132,8 +136,9 @@ def generate_proposals(group_id: int, db: Session):
         valid_people = 0
         total_minutes = 0
 
-        for participant in (group.participants):
-            minutes = calculate_person_minutes(participant.person_id, pair, db)
+        for participant in group.participants:
+            blocks = group_blocks.get(participant.person_id, [])
+            minutes = calculate_person_minutes_from_blocks(blocks, pair)
             can_attend = minutes >= group.minimum_attendance_minutes
             
             attendance.append(

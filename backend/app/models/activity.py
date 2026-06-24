@@ -4,10 +4,13 @@ from sqlalchemy import String
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
+from sqlalchemy import UniqueConstraint
 from app.database.base import Base
 
 class Activity(Base):
     __tablename__ = "activities"
+
+    __table_args__ = UniqueConstraint("group_id", "person_id", name="uq_group_person"),
 
     id_activity: Mapped[int] = mapped_column(Integer, primary_key=True)
     person_id: Mapped[int] = mapped_column(ForeignKey("persons.id_person", ondelete="CASCADE"))

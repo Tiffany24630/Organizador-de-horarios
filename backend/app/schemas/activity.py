@@ -1,10 +1,6 @@
 from pydantic import BaseModel
-from sqlalchemy import UniqueConstraint
-
 
 class ActivityCreate(BaseModel):
-    __table_args__ = UniqueConstraint("group_id", "person_id", name="uq_group_person"),
-
     person_id: int
     name: str
     type: str

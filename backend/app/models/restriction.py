@@ -9,10 +9,13 @@ from app.models.enums import RestrictionType
 from app.models.enums import DayOfWeek
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
+from sqlalchemy import UniqueConstraint
 from app.database.base import Base
 
 class Restriction(Base):
     __tablename__ = "restrictions"
+
+    __table_args__ = UniqueConstraint("group_id", "name", name="uq_group_restriction"),
 
     id_restriction: Mapped[int] = mapped_column(Integer, primary_key=True)
     group_id: Mapped[int] = mapped_column(ForeignKey("activity_groups.id_group", ondelete="CASCADE"))
