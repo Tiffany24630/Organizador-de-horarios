@@ -10,8 +10,8 @@ from app.database.base import Base
 class AcceptedSchedule(Base):
     __tablename__ = "accepted_schedules"
 
-    id_accepted: Mapped[datetime] = mapped_column(DateTime, primary_key=True, default = datetime.utcnow)
-    proposal_id: Mapped[int] = mapped_column(ForeignKey("proposed_schedules.id_schedule"))
+    id_accepted: Mapped[int] = mapped_column(Integer, primary_key=True)
+    proposal_id: Mapped[int] = mapped_column(ForeignKey("proposed_schedules.id_schedule", ondelete="CASCADE"))
     accepted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    proposal = relationship("ProposedSchedule")
+    proposal = relationship("ProposedSchedule", back_populates="accepted_schedule")

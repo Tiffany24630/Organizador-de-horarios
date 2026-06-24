@@ -1,8 +1,11 @@
 from datetime import time
 from pydantic import BaseModel
-from app.models.enums import (RestrictionType, DayOfWeek)
+from app.models.enums import RestrictionType, DayOfWeek
+from sqlalchemy import UniqueConstraint
 
 class RestrictionCreate(BaseModel):
+    __table_args__ = UniqueConstraint("group_id", "name", name="uq_group_restriction"),
+    
     group_id: int
     name: str
 

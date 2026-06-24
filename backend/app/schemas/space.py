@@ -1,8 +1,9 @@
 from pydantic import BaseModel
+from pydantic import Field
 
 class SpaceCreate(BaseModel):
     name: str
-    capacity: int
+    capacity: int = Field(gt=0)
 
 class SpaceUpdate(BaseModel):
     name: str

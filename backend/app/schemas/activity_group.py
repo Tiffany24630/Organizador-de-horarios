@@ -1,5 +1,6 @@
 from datetime import date
 from pydantic import BaseModel
+from pydantic import Field
 
 class ActivityGroupCreate(BaseModel):
     name: str
@@ -9,6 +10,9 @@ class ActivityGroupCreate(BaseModel):
     minimum_attendance_minutes: int
     start_date: date | None = None
     end_date: date | None = None
+    sessions_per_week: int = Field(gt=0)
+    duration_minutes: int = Field(gt=0)
+    minimum_attendance_minutes: int = Field(gt=0)
 
 class ActivityGroupUpdate(BaseModel):
     name: str | None = None

@@ -16,7 +16,7 @@ class ProposedSchedule(Base):
     group_id: Mapped[int] = mapped_column(ForeignKey("activity_groups.id_group", ondelete="CASCADE"))
     name: Mapped[str] = mapped_column(String(100))
 
-    attendances = relationship("ProposalAttendance", cascade="all, delete-orphan")
+    attendances = relationship("ProposalAttendance", back_populates="proposal", cascade="all, delete-orphan")
     
     attendance_percentage: Mapped[float] = mapped_column(Float)
     score: Mapped[float] = mapped_column(Float)
@@ -25,3 +25,4 @@ class ProposedSchedule(Base):
 
     group = relationship("ActivityGroup", back_populates="schedules")
     sessions = relationship("ProposedSession", cascade="all, delete-orphan", back_populates="schedule")
+    accepted_schedule = relationship("AcceptedSchedule", uselist=False, back_populates="proposal")
