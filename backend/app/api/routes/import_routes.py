@@ -5,11 +5,13 @@ from fastapi import Form
 from fastapi import Depends
 from sqlalchemy.orm import Session
 from app.database.connection import get_db
+from app.services.parsers.image_schedule_parser import parse_image_to_schedule
 from app.services.parsers.pdf_parser import extract_tables
 from app.services.parsers.image_parser import extract_text_from_image
 from app.services.import_schedule_service import import_schedule
 from app.services.parsers.generic_schedule_parser import parse_dataframe
 import pandas as pd
+from app.services.validators.schedule_validator import validate_schedule
 import tempfile
 
 router = APIRouter(prefix="/import", tags=["Import"])
@@ -43,19 +45,22 @@ def load_dataframe(file: UploadFile):
 
     elif suffix in ["png", "jpg", "jpeg"]:
         text = extract_text_from_image(path)
+        schedule = parse_image_to_schedule(text)
 
-        raise ValueError("OCR extraction works, but image-to-schedule conversion is not implemented yet.")
-
+        return pd.DataFrame(schedule)
+    
     raise ValueError(f"Unsupported file type: {suffix}")
 
 @router.post("/excel")
 async def import_excel(file: UploadFile = File(...)):
     df = load_dataframe(file)
+
     return parse_dataframe(df)
 
 @router.post("/preview")
 async def preview_file(file: UploadFile = File(...)):
     df = load_dataframe(file)
+
     return parse_dataframe(df)
 
 @router.post("/excel/save")
@@ -67,7 +72,16 @@ async def import_and_save(person_id: int = Form(...), file: UploadFile = File(..
     if not result["success"]:
         return result
 
-    saved = import_schedule(person_id, result["schedule"], db)
+    validation = validate_schedule(result["schedule"])
+
+    if not validation["valid"]:
+        return {
+            "success": False,
+            "error": "Schedule validation failed",
+            "details": validation["errors"]
+        }
+
+    saved = import_schedule(person_id, validation["cleaned"], db)
 
     return {
         "success": True,

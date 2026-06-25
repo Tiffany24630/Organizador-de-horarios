@@ -31,7 +31,6 @@ def build_candidate_sessions(matrix, duration_minutes, minimum_people):
 
         for i in range(len(slots) - slots_needed + 1):
             valid = True
-
             values = []
 
             for j in range(slots_needed):
@@ -58,8 +57,27 @@ def build_candidate_sessions(matrix, duration_minutes, minimum_people):
 
     return candidates
 
-def calculate_score(attendance_percentage, total_available_minutes):
-    return attendance_percentage * 100 + total_available_minutes
+def calculate_score(attendance_ratio, total_minutes, continuity_bonus, conflict_penalty):
+    base = attendance_ratio * 100
+    normalized_minutes = total_minutes / 60
+
+    return base + normalized_minutes + continuity_bonus - conflict_penalty
+
+def calculate_continuity(pair):
+    if len(pair) <= 1:
+        return 0
+
+    sorted_pair = sorted(pair, key=lambda x: (x["day"], x["start"]))
+    bonus = 0
+
+    for i in range(len(sorted_pair) - 1):
+        current = sorted_pair[i]
+        nxt = sorted_pair[i + 1]
+
+        if current["day"] == nxt["day"]:
+            bonus += 10 
+
+    return bonus
 
 def explain_conflicts(attendance):
     conflicts = []
@@ -155,7 +173,9 @@ def generate_proposals(group_id: int, db: Session):
             total_minutes += minutes
 
         attendance_percentage = valid_people / total_people
-        score = calculate_score(attendance_percentage, total_minutes)
+        continuity_bonus = calculate_continuity(pair)
+        conflict_penalty = calculate_conflict_penalty(group, pair, group_blocks)
+        score = calculate_score(attendance_percentage, total_minutes, continuity_bonus, conflict_penalty)
 
         results.append(
             {
@@ -187,3 +207,18 @@ def generate_proposals(group_id: int, db: Session):
     db.commit()
 
     return response
+
+def calculate_conflict_penalty(group, pair, group_blocks):
+    penalty = 0
+
+    for participant in group.participants:
+        blocks = group_blocks.get(participant.person_id, [])
+        minutes = calculate_person_minutes_from_blocks(blocks, pair)
+
+        if minutes < group.minimum_attendance_minutes:
+            penalty += 20
+
+        elif minutes < group.minimum_attendance_minutes * 1.5:
+            penalty += 5
+
+    return penalty
