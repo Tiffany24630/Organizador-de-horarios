@@ -38,20 +38,26 @@ def get_or_create_activity(person_id, activity_name, db):
 
     return activity
 
-def import_schedule( person_id, normalized_schedule, db: Session):
+def import_schedule(person_id, normalized_schedule, db: Session):
     logger.info(f"Importing schedule for person {person_id}")
-    
+
     created_blocks = 0
 
     for row in normalized_schedule:
         activity = get_or_create_activity(person_id, row["activity"], db)
 
-        block = TimeBlock(
-            activity_id=activity.id_activity,
-            day_of_week=row["day"],
-            start_time=parse_time(row["start"]),
-            end_time=parse_time(row["end"])
-        )
+        start_time = parse_time(row["start"])
+        end_time = parse_time(row["end"])
+
+        if start_time >= end_time:
+            logger.warning(
+                f"Skipping invalid block: "
+                f"{row['activity']} "
+                f"{start_time} - {end_time}"
+            )
+            continue
+
+        block = TimeBlock(activity_id=activity.id_activity, day_of_week=row["day"], start_time=start_time, end_time=end_time)
 
         db.add(block)
 

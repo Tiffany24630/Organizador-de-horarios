@@ -12,6 +12,14 @@ DAYS = {
     "domingo": DayOfWeek.SUNDAY
 }
 
+HEADER_WORDS = {
+    "dia",
+    "día",
+    "inicio",
+    "fin",
+    "actividad"
+}
+
 def normalize_day(text: str):
     text = text.lower().strip()
 
@@ -21,6 +29,11 @@ def detect_schedule_from_table(rows):
     schedule = []
 
     for row in rows:
+        first_column = str(row[0]).strip().lower()
+
+        if first_column in HEADER_WORDS:
+            continue
+        
         if len(row) < 4:
             continue
 
@@ -31,10 +44,10 @@ def detect_schedule_from_table(rows):
 
         schedule.append(
             {
+                "activity": str(row[3]),
                 "day": day,
                 "start": str(row[1]),
-                "end": str(row[2]),
-                "name": str(row[3])
+                "end": str(row[2])
             }
         )
 
