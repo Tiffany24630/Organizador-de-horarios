@@ -3,21 +3,28 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 from app.database.connection import get_db
 from app.models.activity import Activity
-from app.schemas.activity import ActivityCreate, ActivityResponse
+from app.models.person import Person
+from app.schemas.activity import ActivityCreate, ActivityUpdate, ActivityResponse
 
 router = APIRouter(prefix="/activities", tags=["Activities"])
 
 @router.get("/", response_model=list[ActivityResponse])
 def get_activities(
+    person_id: int | None = None,
     db: Session = Depends(get_db)
 ):
-    return db.query(Activity).all()
+    query = db.query(Activity)
+    if person_id is not None:
+        query = query.filter(Activity.person_id == person_id)
+    return query.all()
 
 @router.post("/", response_model=ActivityResponse)
 def create_activity(
     activity: ActivityCreate,
     db: Session = Depends(get_db)
 ):
+    if not db.get(Person, activity.person_id):
+        raise HTTPException(status_code=404, detail="Person not found")
     new_activity = Activity(**activity.model_dump())
 
     db.add(new_activity)
@@ -39,7 +46,7 @@ def get_activity(activity_id: int, db: Session = Depends(get_db)):
     return activity
 
 @router.put("/{activity_id}", response_model=ActivityResponse)
-def update_activity(activity_id: int, activity_data: ActivityCreate, db: Session = Depends(get_db)):
+def update_activity(activity_id: int, activity_data: ActivityUpdate, db: Session = Depends(get_db)):
     activity = db.get(Activity, activity_id)
 
     if not activity:
@@ -48,10 +55,8 @@ def update_activity(activity_id: int, activity_data: ActivityCreate, db: Session
             detail = "Activity not found"
         )
 
-    activity.person_id = activity_data.person_id
-    activity.name = activity_data.name
-    activity.type = activity_data.type
-    activity.description = activity_data.description
+    for key, value in activity_data.model_dump(exclude_unset=True).items():
+        setattr(activity, key, value)
 
     db.commit()
     db.refresh(activity)

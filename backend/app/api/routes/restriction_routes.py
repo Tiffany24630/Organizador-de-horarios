@@ -4,12 +4,15 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.database.connection import get_db
 from app.models.restriction import Restriction
+from app.models.activity_group import ActivityGroup
 from app.schemas.restriction import RestrictionCreate, RestrictionResponse
 
 router = APIRouter(prefix="/restrictions", tags=["Restrictions"])
 
 @router.post("/", response_model=RestrictionResponse)
 def create_restriction(data: RestrictionCreate, db: Session = Depends(get_db)):
+    if not db.get(ActivityGroup, data.group_id):
+        raise HTTPException(status_code=404, detail="Group not found")
     restriction = Restriction(**data.model_dump())
 
     db.add(restriction)

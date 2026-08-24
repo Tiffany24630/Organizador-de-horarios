@@ -10,8 +10,13 @@ from app.schemas.time_block import TimeBlockCreate, TimeBlockUpdate, TimeBlockRe
 router = APIRouter(prefix="/time-blocks", tags=["Time Blocks"])
 
 @router.get("/", response_model=list[TimeBlockResponse])
-def get_blocks(db: Session = Depends(get_db)):
-    return db.query(TimeBlock).all()
+def get_blocks(person_id: int | None = None, activity_id: int | None = None, db: Session = Depends(get_db)):
+    query = db.query(TimeBlock)
+    if person_id is not None:
+        query = query.join(Activity).filter(Activity.person_id == person_id)
+    if activity_id is not None:
+        query = query.filter(TimeBlock.activity_id == activity_id)
+    return query.all()
 
 
 @router.get("/{block_id}", response_model=TimeBlockResponse)
@@ -46,7 +51,7 @@ def create_block(block: TimeBlockCreate, db: Session = Depends(get_db)):
     return new_block
 
 
-@router.put("/{block_id}")
+@router.put("/{block_id}", response_model=TimeBlockResponse)
 def update_block(block_id: int, block_data: TimeBlockUpdate, db: Session = Depends(get_db)):
     block = db.get(TimeBlock, block_id)
 

@@ -44,14 +44,16 @@ def update_person(person_id: int, person_data: PersonUpdate, db: Session = Depen
     if not person:
         raise HTTPException(status_code = 404, detail = "Person not found")
 
-    existing = db.query(Person).filter(Person.email == person_data.email, Person.id_person != person_id).first()
+    changes = person_data.model_dump(exclude_unset=True)
+    existing = None
+    if "email" in changes:
+        existing = db.query(Person).filter(Person.email == changes["email"], Person.id_person != person_id).first()
 
     if existing:
         raise HTTPException(status_code=400, detail="Email already in use")
 
-    person.name = person_data.name
-    person.email = person_data.email
-    person.active = person_data.active
+    for key, value in changes.items():
+        setattr(person, key, value)
 
     db.commit()
     db.refresh(person)

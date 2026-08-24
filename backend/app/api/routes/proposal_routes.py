@@ -12,7 +12,10 @@ router = APIRouter(prefix = "/proposals", tags = ["Proposals"])
 
 @router.post("/generate/{group_id}")
 def generate(group_id: int, db: Session = Depends(get_db)):
-    return generate_proposals(group_id, db)
+    try:
+        return generate_proposals(group_id, db)
+    except ValueError as error:
+        raise HTTPException(400, str(error)) from error
 
 @router.put("/{proposal_id}/accept")
 def accept(proposal_id: int, db: Session = Depends(get_db)):
@@ -39,7 +42,16 @@ def get_proposal(proposal_id: int, db: Session = Depends(get_db)):
     if not proposal:
         raise HTTPException(404, "Proposal not found")
 
-    return proposal
+    return {
+        "id_schedule": proposal.id_schedule,
+        "group_id": proposal.group_id,
+        "name": proposal.name,
+        "attendance_percentage": proposal.attendance_percentage,
+        "score": proposal.score,
+        "status": proposal.status,
+        "sessions": proposal.sessions,
+        "attendances": proposal.attendances,
+    }
 
 @router.put("/{proposal_id}/reject")
 def reject(proposal_id: int, db: Session = Depends(get_db)):

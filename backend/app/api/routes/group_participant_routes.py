@@ -4,12 +4,18 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from app.database.connection import get_db
 from app.models.group_participant import GroupParticipant
+from app.models.activity_group import ActivityGroup
+from app.models.person import Person
 from app.schemas.group_participant import GroupParticipantCreate, GroupParticipantResponse
 
 router = APIRouter(prefix="/group-participants", tags=["Group Participants"])
 
 @router.post("/", response_model=GroupParticipantResponse)
 def create_participant(data: GroupParticipantCreate, db: Session = Depends(get_db)):
+    if not db.get(ActivityGroup, data.group_id):
+        raise HTTPException(404, "Group not found")
+    if not db.get(Person, data.person_id):
+        raise HTTPException(404, "Person not found")
     participant = GroupParticipant(**data.model_dump())
 
     exists = db.query(GroupParticipant).filter(GroupParticipant.group_id == data.group_id, GroupParticipant.person_id == data.person_id).first()
