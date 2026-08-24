@@ -1,34 +1,31 @@
+import unicodedata
+
 from app.models.enums import DayOfWeek
+
 
 DAY_MAP = {
     "lunes": DayOfWeek.MONDAY,
     "monday": DayOfWeek.MONDAY,
-
     "martes": DayOfWeek.TUESDAY,
     "tuesday": DayOfWeek.TUESDAY,
-
     "miercoles": DayOfWeek.WEDNESDAY,
-    "miércoles": DayOfWeek.WEDNESDAY,
     "wednesday": DayOfWeek.WEDNESDAY,
-
     "jueves": DayOfWeek.THURSDAY,
     "thursday": DayOfWeek.THURSDAY,
-
     "viernes": DayOfWeek.FRIDAY,
     "friday": DayOfWeek.FRIDAY,
-
     "sabado": DayOfWeek.SATURDAY,
-    "sábado": DayOfWeek.SATURDAY,
     "saturday": DayOfWeek.SATURDAY,
-
     "domingo": DayOfWeek.SUNDAY,
-    "sunday": DayOfWeek.SUNDAY
+    "sunday": DayOfWeek.SUNDAY,
 }
 
+
 def normalize_day(value):
-    value = str(value).strip().lower()
-
-    if value not in DAY_MAP:
+    if isinstance(value, DayOfWeek):
+        return value
+    normalized = unicodedata.normalize("NFKD", str(value).strip().lower())
+    normalized = "".join(character for character in normalized if not unicodedata.combining(character))
+    if normalized not in DAY_MAP:
         raise ValueError(f"Unknown day: {value}")
-
-    return DAY_MAP[value]
+    return DAY_MAP[normalized]

@@ -35,6 +35,9 @@ class RestrictionResponse(BaseModel):
     group_id: int
     name: str
     type: RestrictionType
+    day_of_week: DayOfWeek | None
+    start_time: time | None
+    end_time: time | None
 
     class Config:
         from_attributes = True

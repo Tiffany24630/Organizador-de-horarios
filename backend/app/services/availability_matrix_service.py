@@ -50,7 +50,7 @@ def build_matrix(group_id, db):
             available_count = total_people
 
             for person_id in people:
-                blocks = group_blocks(person_id, db)
+                blocks = group_blocks.get(person_id, [])
 
                 occupied = False
 

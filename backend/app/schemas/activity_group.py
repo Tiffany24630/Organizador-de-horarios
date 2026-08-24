@@ -5,9 +5,6 @@ from pydantic import Field
 class ActivityGroupCreate(BaseModel):
     name: str
     description: str | None = None
-    sessions_per_week: int
-    duration_minutes: int
-    minimum_attendance_minutes: int
     start_date: date | None = None
     end_date: date | None = None
     sessions_per_week: int = Field(gt=0)
@@ -31,6 +28,8 @@ class ActivityGroupResponse(BaseModel):
     sessions_per_week: int
     duration_minutes: int
     minimum_attendance_minutes: int
+    start_date: date | None
+    end_date: date | None
     active: bool
 
     class Config:

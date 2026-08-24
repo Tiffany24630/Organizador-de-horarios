@@ -2,7 +2,8 @@ from app.services.parsers.column_detector import detect_columns
 from app.services.parsers.schedule_normalizer import normalize_rows
 
 def parse_dataframe(dataframe):
-    mapping = detect_columns(dataframe.columns)
+    columns = dataframe.columns if hasattr(dataframe, "columns") else (dataframe[0].keys() if dataframe else [])
+    mapping = detect_columns(columns)
 
     required = ["activity", "day", "start", "end"]
 
