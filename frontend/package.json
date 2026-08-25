@@ -14,7 +14,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "electron:dev": "npm run build:electron && concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && electron .\"",
-    "backend:build": "..\\venv\\Scripts\\python.exe -m PyInstaller --noconfirm --clean --onedir --name organizador-backend --distpath ../backend/dist --workpath ../backend/build --specpath ../backend ../backend/desktop_server.py",
+    "backend:build": "..\\venv\\Scripts\\python.exe -m PyInstaller --noconfirm --clean --onedir --name organizador-backend --exclude-module pandas --exclude-module numpy --exclude-module scipy --exclude-module torch --exclude-module easyocr --distpath ../backend/dist --workpath ../backend/build --specpath ../backend ../backend/desktop_server.py",
     "desktop:dir": "npm run backend:build && npm run build && electron-builder --dir",
     "desktop:dist": "npm run backend:build && npm run build && electron-builder --win nsis"
   },
