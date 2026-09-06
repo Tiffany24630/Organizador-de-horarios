@@ -21,6 +21,11 @@ from app.services.validators.schedule_validator import validate_schedule
 
 router = APIRouter(prefix="/import", tags=["Import"])
 SUPPORTED_EXTENSIONS = {"csv", "xlsx", "pdf", "png", "jpg", "jpeg"}
+MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+
+
+class UploadRejected(ValueError):
+    """Raised when the upload itself is invalid, before parsing begins."""
 
 
 class EditableScheduleRow(BaseModel):
@@ -42,6 +47,44 @@ class ScheduleImportRequest(BaseModel):
     replace_existing: bool = False
 
 
+def _read_upload(file: UploadFile) -> bytes:
+    file.file.seek(0)
+    content = file.file.read(MAX_UPLOAD_BYTES + 1)
+    if not content:
+        raise UploadRejected("El archivo está vacío")
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise UploadRejected("El archivo supera el límite de 20 MB")
+    return content
+
+
+def _read_csv(path: str):
+    raw = Path(path).read_bytes()
+    try:
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = raw.decode("latin-1")
+
+    try:
+        dialect = csv.Sniffer().sniff(text[:8192], delimiters=",;\t|")
+    except csv.Error:
+        dialect = csv.excel
+    return list(csv.DictReader(text.splitlines(), dialect=dialect))
+
+
+def _rows_from_tables(tables):
+    rows = []
+    for table in tables:
+        if not table or len(table) < 2:
+            continue
+        headers = [str(value or "").strip() for value in table[0]]
+        rows.extend(
+            dict(zip(headers, row))
+            for row in table[1:]
+            if row and any(value not in (None, "") for value in row)
+        )
+    return rows
+
+
 def load_dataframe(file: UploadFile):
     suffix = Path(file.filename or "").suffix.lower().lstrip(".")
     if suffix not in SUPPORTED_EXTENSIONS:
@@ -50,12 +93,11 @@ def load_dataframe(file: UploadFile):
     path = None
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=f".{suffix}") as temporary:
-            temporary.write(file.file.read())
+            temporary.write(_read_upload(file))
             path = temporary.name
 
         if suffix == "csv":
-            with open(path, encoding="utf-8-sig", newline="") as source:
-                return list(csv.DictReader(source))
+            return _read_csv(path)
         if suffix == "xlsx":
             workbook = load_workbook(path, read_only=True, data_only=True)
             sheet = workbook.active
@@ -66,10 +108,9 @@ def load_dataframe(file: UploadFile):
             headers = [str(value or "").strip() for value in values[0]]
             return [dict(zip(headers, row)) for row in values[1:] if any(value is not None for value in row)]
         if suffix == "pdf":
-            tables = extract_tables(path)
-            if tables and len(tables[0]) > 1:
-                headers = tables[0][0]
-                return [dict(zip(headers, row)) for row in tables[0][1:]]
+            rows = _rows_from_tables(extract_tables(path))
+            if rows:
+                return rows
             schedule = parse_image_to_schedule(extract_text(path))
             return schedule
         text = extract_text_from_image(path)
@@ -92,9 +133,12 @@ def _preview(file: UploadFile):
         }
     except HTTPException:
         raise
+    except UploadRejected as error:
+        status_code = 413 if "20 MB" in str(error) else 422
+        raise HTTPException(status_code, str(error)) from error
     except Exception as error:
         suffix = Path(file.filename or "").suffix.lower()
-        if suffix in {".png", ".jpg", ".jpeg"}:
+        if suffix in {".png", ".jpg", ".jpeg", ".pdf"}:
             return {
                 "success": False,
                 "schedule": [{
@@ -105,7 +149,7 @@ def _preview(file: UploadFile):
                 }],
                 "errors": [{
                     "type": "OCR_MANUAL_REVIEW",
-                    "message": "No se pudo reconocer automáticamente la imagen. Completa o corrige la fila mostrada antes de guardar.",
+                    "message": "No se pudo reconocer automáticamente el documento. Completa o corrige la fila mostrada antes de guardar.",
                 }],
             }
         raise HTTPException(422, f"No se pudo interpretar el archivo: {error}") from error

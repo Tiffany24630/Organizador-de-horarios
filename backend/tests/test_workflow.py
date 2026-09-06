@@ -95,6 +95,22 @@ class CompleteWorkflowTest(unittest.TestCase):
         self.assertEqual(preview["errors"][0]["type"], "OCR_MANUAL_REVIEW")
         self.assertEqual(len(preview["schedule"]), 1)
 
+    def test_semicolon_csv_upload_is_parsed(self):
+        content = "Actividad;Día;Inicio;Fin\nTrabajo;Lunes;08:00;09:00\n".encode()
+        upload = UploadFile(filename="horario.csv", file=io.BytesIO(content))
+        preview = _preview(upload)
+
+        self.assertTrue(preview["success"])
+        self.assertEqual(preview["schedule"][0]["activity"], "Trabajo")
+        self.assertEqual(preview["schedule"][0]["day"], DayOfWeek.MONDAY)
+
+    def test_scanned_pdf_opens_manual_editor(self):
+        upload = UploadFile(filename="horario.pdf", file=io.BytesIO(b"invalid pdf"))
+        preview = _preview(upload)
+
+        self.assertFalse(preview["success"])
+        self.assertEqual(preview["errors"][0]["type"], "OCR_MANUAL_REVIEW")
+
 
 if __name__ == "__main__":
     unittest.main()
