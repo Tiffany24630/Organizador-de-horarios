@@ -1,11 +1,31 @@
+# Python
 __pycache__/
 *.py[cod]
+*.spec
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Local data and configuration
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.*
+!.env.example
+*.log
+
+# Node / Electron
 node_modules/
 dist/
+dist-electron/
 build/
 release/
-dist-electron/
-*.spec
-.env
-__pycache__
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

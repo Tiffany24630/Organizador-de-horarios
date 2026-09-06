@@ -1,0 +1,17 @@
+.git
+.gitignore
+.agents
+.codex
+.vscode
+venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+frontend/node_modules
+frontend/dist
+frontend/dist-electron
+frontend/release
+backend/build
+backend/dist
+backend/*.db
+*.log
