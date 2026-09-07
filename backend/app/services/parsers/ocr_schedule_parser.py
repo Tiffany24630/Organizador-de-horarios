@@ -52,6 +52,47 @@ def _ocr_lines(data):
     return [sorted(words, key=lambda word: word["left"]) for words in groups.values()]
 
 
+def _visual_lines(data):
+    """Group words by their vertical position, independent of OCR blocks.
+
+    Tesseract frequently puts the two lines of a time label in different OCR
+    blocks. Visual grouping is what a timetable needs, not paragraph grouping.
+    """
+    words = [word for line in _ocr_lines(data) for word in line]
+    rows = []
+    for word in sorted(words, key=lambda item: (item["top"], item["left"])):
+        row = next((item for item in rows if abs(item[0] - word["top"]) <= 12), None)
+        if row is None:
+            row = [word["top"], []]
+            rows.append(row)
+        row[1].append(word)
+    return [sorted(words, key=lambda word: word["left"]) for _top, words in rows]
+
+
+def _time_rows(data, first_day_left):
+    """Find ranges both in one line and in vertically-wrapped time labels."""
+    direct, individual = [], []
+    for line in _visual_lines(data):
+        left_words = [word for word in line if word["left"] < first_day_left - 15]
+        times = re.findall(r"\d{1,2}:\d{2}", " ".join(word["text"] for word in left_words))
+        if len(times) >= 2:
+            direct.append((min(word["top"] for word in left_words), times[0], times[1]))
+        elif len(times) == 1:
+            individual.append((min(word["top"] for word in left_words), times[0]))
+    if direct:
+        return direct
+
+    # Screenshot-style labels use one line for the start (often with a dash)
+    # and a second line directly below for the end.
+    paired = []
+    for index in range(0, len(individual) - 1, 2):
+        top, start = individual[index]
+        end_top, end = individual[index + 1]
+        if 8 <= end_top - top <= 115:
+            paired.append((top, start, end))
+    return paired
+
+
 def parse_schedule_ocr_data(data):
     """Extract timetable cells using Tesseract word coordinates.
 
@@ -72,11 +113,7 @@ def parse_schedule_ocr_data(data):
         return []
 
     first_day_left = headers[0][0]
-    time_rows = []
-    for line in lines:
-        match = TIME_RANGE.search(" ".join(word["text"] for word in line))
-        if match and min(word["left"] for word in line) < first_day_left - 15:
-            time_rows.append((min(word["top"] for word in line), match.group(1), match.group(2)))
+    time_rows = _time_rows(data, first_day_left)
     time_rows.sort()
     unique_rows = []
     for row in time_rows:

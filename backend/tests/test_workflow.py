@@ -131,6 +131,23 @@ class CompleteWorkflowTest(unittest.TestCase):
         self.assertIn("CC3054", monday["activity"])
         self.assertIn("CIT-639", monday["activity"])
 
+    def test_ocr_accepts_time_ranges_wrapped_on_two_lines(self):
+        words = [
+            ("Lun", 160, 20), ("Mar", 340, 20),
+            ("14:00", 20, 70), ("-", 70, 70), ("14:45", 20, 100),
+            ("MM3032", 145, 75), ("CIT-301", 150, 105),
+            ("14:50", 20, 160), ("-", 70, 160), ("15:35", 20, 190),
+        ]
+        data = {key: [] for key in ("text", "left", "top", "width", "height", "conf", "block_num", "par_num", "line_num")}
+        for index, (text, left, top) in enumerate(words):
+            data["text"].append(text); data["left"].append(left); data["top"].append(top)
+            data["width"].append(max(8, len(text) * 7)); data["height"].append(12); data["conf"].append("95")
+            data["block_num"].append(1); data["par_num"].append(index); data["line_num"].append(1)
+        schedule = parse_schedule_ocr_data(data)
+        self.assertEqual(len(schedule), 1)
+        self.assertEqual((schedule[0]["start"], schedule[0]["end"]), ("14:00", "14:45"))
+        self.assertIn("MM3032", schedule[0]["activity"])
+
 
 if __name__ == "__main__":
     unittest.main()
