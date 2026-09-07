@@ -14,8 +14,9 @@ from app.models.enums import DayOfWeek
 from app.models.person import Person
 from app.services.import_schedule_service import import_schedule
 from app.services.parsers.generic_schedule_parser import parse_dataframe
-from app.services.parsers.image_parser import extract_text_from_image
+from app.services.parsers.image_parser import extract_ocr_data_from_image, extract_text_from_image
 from app.services.parsers.image_schedule_parser import parse_image_to_schedule
+from app.services.parsers.ocr_schedule_parser import parse_schedule_ocr_data
 from app.services.parsers.pdf_parser import extract_tables, extract_text
 from app.services.validators.schedule_validator import validate_schedule
 
@@ -113,8 +114,8 @@ def load_dataframe(file: UploadFile):
                 return rows
             schedule = parse_image_to_schedule(extract_text(path))
             return schedule
-        text = extract_text_from_image(path)
-        return parse_image_to_schedule(text)
+        schedule = parse_schedule_ocr_data(extract_ocr_data_from_image(path))
+        return schedule or parse_image_to_schedule(extract_text_from_image(path))
     finally:
         if path and os.path.exists(path):
             os.unlink(path)
@@ -122,7 +123,10 @@ def load_dataframe(file: UploadFile):
 
 def _preview(file: UploadFile):
     try:
-        result = parse_dataframe(load_dataframe(file))
+        loaded = load_dataframe(file)
+        # OCR parsers already produce canonical rows; spreadsheets still need
+        # column detection and normalization.
+        result = {"success": True, "schedule": loaded} if isinstance(loaded, list) and loaded and set(loaded[0]).issuperset({"activity", "day", "start", "end"}) else parse_dataframe(loaded)
         if not result["success"]:
             raise HTTPException(422, result["error"])
         validation = validate_schedule(result["schedule"])

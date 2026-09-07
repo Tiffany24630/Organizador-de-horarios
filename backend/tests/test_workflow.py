@@ -18,6 +18,7 @@ from app.models.proposed_schedule import ProposedSchedule
 from app.models.time_block import TimeBlock
 from app.models.restriction import Restriction
 from app.services.parsers.generic_schedule_parser import parse_dataframe
+from app.services.parsers.ocr_schedule_parser import parse_schedule_ocr_data
 from app.services.proposal_generator_service import generate_proposals
 from app.services.proposal_management_service import accept_proposal
 from app.services.validators.schedule_validator import validate_schedule
@@ -110,6 +111,25 @@ class CompleteWorkflowTest(unittest.TestCase):
 
         self.assertFalse(preview["success"])
         self.assertEqual(preview["errors"][0]["type"], "OCR_MANUAL_REVIEW")
+
+    def test_ocr_table_preserves_day_time_and_cell_contents(self):
+        words = [
+            ("Hora", 20, 20), ("Lun", 150, 20), ("Mar", 300, 20),
+            ("07:00", 20, 70), ("-", 64, 70), ("07:45", 76, 70),
+            ("CC3054", 140, 70), ("-", 195, 70), ("Sección:", 140, 92), ("41", 210, 92), ("Aula:", 140, 114), ("CIT-639", 185, 114),
+            ("CC2008", 300, 70), ("-", 355, 70), ("Sección:", 300, 92), ("41", 370, 92),
+            ("07:50", 20, 145), ("-", 64, 145), ("08:35", 76, 145),
+        ]
+        data = {key: [] for key in ("text", "left", "top", "width", "height", "conf", "block_num", "par_num", "line_num")}
+        for index, (text, left, top) in enumerate(words):
+            data["text"].append(text); data["left"].append(left); data["top"].append(top)
+            data["width"].append(max(8, len(text) * 7)); data["height"].append(12); data["conf"].append("95")
+            data["block_num"].append(1); data["par_num"].append(top); data["line_num"].append(1)
+        schedule = parse_schedule_ocr_data(data)
+        monday = next(row for row in schedule if row["day"] == DayOfWeek.MONDAY)
+        self.assertEqual((monday["start"], monday["end"]), ("07:00", "07:45"))
+        self.assertIn("CC3054", monday["activity"])
+        self.assertIn("CIT-639", monday["activity"])
 
 
 if __name__ == "__main__":
