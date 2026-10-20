@@ -18,4 +18,6 @@ class TimeBlock(Base):
     day_of_week: Mapped[DayOfWeek] = mapped_column(Enum(DayOfWeek))
     start_time: Mapped[time] = mapped_column(Time)
     end_time: Mapped[time] = mapped_column(Time)
+    # Optional so existing schedules and imports without a classroom remain valid.
+    room: Mapped[str | None] = mapped_column(String(100), nullable=True)
     activity = relationship("Activity", back_populates="time_blocks")

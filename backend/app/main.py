@@ -32,8 +32,16 @@ from app.api.routes.proposal_attendance_routes import router as proposal_attenda
 from app.api.routes.proposed_session_routes import router as proposed_session_router
 from app.api.routes.accepted_schedule_routes import router as accepted_schedule_router
 from app.api.routes.proposal_history_routes import router as proposal_history_router
+from sqlalchemy import inspect, text
 
 Base.metadata.create_all(bind=engine)
+
+# create_all does not alter an already existing SQLite table. Keep desktop
+# databases created by older versions usable without requiring a destructive
+# rebuild or a migration tool.
+if "room" not in {column["name"] for column in inspect(engine).get_columns("time_blocks")}:
+    with engine.begin() as connection:
+        connection.execute(text("ALTER TABLE time_blocks ADD COLUMN room VARCHAR(100)"))
 
 app = FastAPI(
     title="Organizador de horarios API",

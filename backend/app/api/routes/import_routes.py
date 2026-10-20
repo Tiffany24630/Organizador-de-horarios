@@ -1,11 +1,11 @@
+import csv
 import os
 import tempfile
-import csv
 from datetime import time
 from pathlib import Path
 
-from openpyxl import load_workbook
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from openpyxl import load_workbook
 from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.orm import Session
 
@@ -17,7 +17,7 @@ from app.services.parsers.generic_schedule_parser import parse_dataframe
 from app.services.parsers.image_parser import extract_ocr_data_from_image, extract_text_from_image
 from app.services.parsers.image_schedule_parser import parse_image_to_schedule
 from app.services.parsers.ocr_schedule_parser import parse_schedule_ocr_data
-from app.services.parsers.pdf_parser import extract_tables, extract_text
+from app.services.parsers.pdf_parser import extract_ocr_schedule, extract_tables, extract_text
 from app.services.validators.schedule_validator import validate_schedule
 
 router = APIRouter(prefix="/import", tags=["Import"])
@@ -26,7 +26,7 @@ MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 
 
 class UploadRejected(ValueError):
-    """Raised when the upload itself is invalid, before parsing begins."""
+    pass
 
 
 class EditableScheduleRow(BaseModel):
@@ -34,6 +34,7 @@ class EditableScheduleRow(BaseModel):
     day: DayOfWeek
     start: time
     end: time
+    room: str | None = Field(default=None, max_length=100)
 
     @model_validator(mode="after")
     def valid_range(self):
@@ -60,11 +61,9 @@ def _read_upload(file: UploadFile) -> bytes:
 
 def _read_csv(path: str):
     raw = Path(path).read_bytes()
-    try:
-        text = raw.decode("utf-8-sig")
-    except UnicodeDecodeError:
-        text = raw.decode("latin-1")
-
+    text = raw.decode("utf-8-sig", errors="replace")
+    if not text.strip():
+        raise UploadRejected("El archivo CSV está vacío")
     try:
         dialect = csv.Sniffer().sniff(text[:8192], delimiters=",;\t|")
     except csv.Error:
@@ -74,21 +73,31 @@ def _read_csv(path: str):
 
 def _rows_from_tables(tables):
     rows = []
-    for table in tables:
+    for table in tables or []:
         if not table or len(table) < 2:
             continue
         headers = [str(value or "").strip() for value in table[0]]
-        rows.extend(
-            dict(zip(headers, row))
-            for row in table[1:]
-            if row and any(value not in (None, "") for value in row)
-        )
+        for values in table[1:]:
+            if values and any(value not in (None, "") for value in values):
+                rows.append(dict(zip(headers, values)))
     return rows
+
+
+def _parse_loaded(loaded):
+    if isinstance(loaded, list) and loaded and set(loaded[0]).issuperset({"activity", "day", "start", "end"}):
+        return {"success": True, "schedule": loaded}
+    return parse_dataframe(loaded)
+
+
+def _has_valid_schedule(rows):
+    return bool(rows) and validate_schedule(rows)["valid"]
 
 
 def load_dataframe(file: UploadFile):
     suffix = Path(file.filename or "").suffix.lower().lstrip(".")
     if suffix not in SUPPORTED_EXTENSIONS:
+        if suffix == "xls":
+            raise ValueError("Los archivos .xls no están disponibles: instale xlrd para habilitarlos")
         raise ValueError(f"Unsupported file type: {suffix or 'unknown'}")
 
     path = None
@@ -101,62 +110,86 @@ def load_dataframe(file: UploadFile):
             return _read_csv(path)
         if suffix == "xlsx":
             workbook = load_workbook(path, read_only=True, data_only=True)
-            sheet = workbook.active
-            values = list(sheet.iter_rows(values_only=True))
-            workbook.close()
+            try:
+                sheet = workbook.active
+                values = list(sheet.iter_rows(values_only=True))
+            finally:
+                workbook.close()
             if not values:
-                return []
+                raise UploadRejected("El archivo Excel no contiene filas")
             headers = [str(value or "").strip() for value in values[0]]
             return [dict(zip(headers, row)) for row in values[1:] if any(value is not None for value in row)]
         if suffix == "pdf":
-            rows = _rows_from_tables(extract_tables(path))
-            if rows:
-                return rows
-            schedule = parse_image_to_schedule(extract_text(path))
-            return schedule
-        schedule = parse_schedule_ocr_data(extract_ocr_data_from_image(path))
-        return schedule or parse_image_to_schedule(extract_text_from_image(path))
+            table_rows = _rows_from_tables(extract_tables(path))
+            if _has_valid_schedule(table_rows):
+                return table_rows
+            pdf_text = extract_text(path)
+            try:
+                text_rows = parse_image_to_schedule(pdf_text) if pdf_text.strip() else []
+            except ValueError:
+                text_rows = []
+            if _has_valid_schedule(text_rows):
+                return text_rows
+            ocr_rows = extract_ocr_schedule(path)
+            return ocr_rows or text_rows or table_rows
+
+        try:
+            rows = parse_schedule_ocr_data(extract_ocr_data_from_image(path))
+        except Exception:
+            rows = []
+        if rows:
+            return rows
+        text = extract_text_from_image(path)
+        return parse_image_to_schedule(text) if text.strip() else []
     finally:
         if path and os.path.exists(path):
             os.unlink(path)
 
 
 def _preview(file: UploadFile):
+    suffix = Path(file.filename or "").suffix.lower()
     try:
         loaded = load_dataframe(file)
-        # OCR parsers already produce canonical rows; spreadsheets still need
-        # column detection and normalization.
-        result = {"success": True, "schedule": loaded} if isinstance(loaded, list) and loaded and set(loaded[0]).issuperset({"activity", "day", "start", "end"}) else parse_dataframe(loaded)
+        result = _parse_loaded(loaded)
         if not result["success"]:
-            raise HTTPException(422, result["error"])
+            return {"success": False, "schedule": [], "errors": [{"type": "HEADER_ERROR", "row": None, "message": result["error"]}], "manual_review": True}
         validation = validate_schedule(result["schedule"])
         return {
             "success": validation["valid"],
-            "schedule": validation["cleaned"],
+            "schedule": validation["editable"],
             "errors": validation["errors"],
+            "manual_review": not validation["valid"] or not validation["cleaned"],
         }
-    except HTTPException:
-        raise
     except UploadRejected as error:
-        status_code = 413 if "20 MB" in str(error) else 422
-        raise HTTPException(status_code, str(error)) from error
+        raise HTTPException(413 if "límite" in str(error) else 422, str(error)) from error
     except Exception as error:
-        suffix = Path(file.filename or "").suffix.lower()
         if suffix in {".png", ".jpg", ".jpeg", ".pdf"}:
             return {
                 "success": False,
-                "schedule": [{
-                    "activity": "",
-                    "day": DayOfWeek.MONDAY,
-                    "start": time(8, 0),
-                    "end": time(9, 0),
-                }],
-                "errors": [{
-                    "type": "OCR_MANUAL_REVIEW",
-                    "message": "No se pudo reconocer automáticamente el documento. Completa o corrige la fila mostrada antes de guardar.",
-                }],
+                "schedule": [],
+                "errors": [{"type": "MANUAL_REVIEW_REQUIRED", "row": None, "message": f"No se pudo reconocer el horario: {error}. Introduce las filas manualmente."}],
+                "manual_review": True,
             }
         raise HTTPException(422, f"No se pudo interpretar el archivo: {error}") from error
+
+
+def _save_schedule(person_id, rows, replace_existing, db):
+    person = db.get(Person, person_id)
+    if not person:
+        raise HTTPException(404, "Person not found")
+    if not rows:
+        raise HTTPException(422, "No hay filas válidas para guardar")
+    try:
+        if replace_existing:
+            for activity in list(person.activities):
+                db.delete(activity)
+            db.flush()
+        imported = import_schedule(person_id, rows, db)
+        db.commit()
+        return imported
+    except Exception:
+        db.rollback()
+        raise
 
 
 @router.post("/excel")
@@ -171,15 +204,8 @@ async def preview_file(file: UploadFile = File(...)):
 
 @router.post("/save")
 def save_edited_schedule(payload: ScheduleImportRequest, db: Session = Depends(get_db)):
-    person = db.get(Person, payload.person_id)
-    if not person:
-        raise HTTPException(404, "Person not found")
-    if payload.replace_existing:
-        for activity in list(person.activities):
-            db.delete(activity)
-        db.flush()
     rows = [row.model_dump() for row in payload.schedule]
-    return {"success": True, "imported": import_schedule(payload.person_id, rows, db)}
+    return {"success": True, "imported": _save_schedule(payload.person_id, rows, payload.replace_existing, db)}
 
 
 @router.post("/excel/save")
@@ -187,6 +213,4 @@ async def import_and_save(person_id: int = Form(...), file: UploadFile = File(..
     preview = _preview(file)
     if not preview["success"]:
         return preview
-    if not db.get(Person, person_id):
-        raise HTTPException(404, "Person not found")
-    return {"success": True, "imported": import_schedule(person_id, preview["schedule"], db)}
+    return {"success": True, "imported": _save_schedule(person_id, preview["schedule"], False, db)}

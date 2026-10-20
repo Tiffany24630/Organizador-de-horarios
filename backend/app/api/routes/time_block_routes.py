@@ -61,9 +61,12 @@ def update_block(block_id: int, block_data: TimeBlockUpdate, db: Session = Depen
             detail="Block not found"
         )
 
-    block.day_of_week = block_data.day_of_week
-    block.start_time = block_data.start_time
-    block.end_time = block_data.end_time
+    changes = block_data.model_dump(exclude_unset=True)
+    block.day_of_week = changes["day_of_week"]
+    block.start_time = changes["start_time"]
+    block.end_time = changes["end_time"]
+    if "room" in changes:
+        block.room = changes["room"]
 
     db.commit()
     db.refresh(block)
