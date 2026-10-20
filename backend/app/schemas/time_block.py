@@ -8,6 +8,7 @@ class TimeBlockCreate(BaseModel):
     day_of_week: DayOfWeek
     start_time: time
     end_time: time
+    room: str | None = None
 
     @model_validator(mode="after")
     def validate_times(self):
@@ -20,6 +21,7 @@ class TimeBlockUpdate(BaseModel):
     day_of_week: DayOfWeek
     start_time: time
     end_time: time
+    room: str | None = None
 
     @model_validator(mode="after")
     def validate_times(self):
@@ -34,6 +36,7 @@ class TimeBlockResponse(BaseModel):
     day_of_week: DayOfWeek
     start_time: time
     end_time: time
+    room: str | None
 
     model_config = {
         "from_attributes": True

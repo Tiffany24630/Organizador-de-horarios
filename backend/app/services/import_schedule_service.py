@@ -1,32 +1,13 @@
-from datetime import datetime
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.models.activity import Activity
 from app.models.time_block import TimeBlock
 from app.core.logger import logger
-
-def parse_time(value):
-    if hasattr(value, "time"):
-        return value.time()
-
-    formats = [
-        "%H:%M",
-        "%H:%M:%S",
-        "%I:%M %p"
-    ]
-
-    value = str(value).strip()
-
-    for fmt in formats:
-        try:
-            return datetime.strptime(value, fmt).time()
-
-        except Exception:
-            pass
-
-    raise ValueError(f"Invalid time: {value}")
+from app.services.parsers.value_normalizer import parse_time
 
 def get_or_create_activity(person_id, activity_name, db):
-    activity = db.query(Activity).filter(Activity.person_id == person_id, Activity.name == activity_name).first()
+    activity_name = " ".join(str(activity_name).split())
+    activity = db.query(Activity).filter(Activity.person_id == person_id, func.lower(Activity.name) == activity_name.casefold()).first()
 
     if activity:
         return activity
@@ -42,6 +23,8 @@ def import_schedule(person_id, normalized_schedule, db: Session):
     logger.info(f"Importing schedule for person {person_id}")
 
     created_blocks = 0
+    skipped_duplicates = 0
+    seen = set()
 
     for row in normalized_schedule:
         activity = get_or_create_activity(person_id, row["activity"], db)
@@ -57,16 +40,33 @@ def import_schedule(person_id, normalized_schedule, db: Session):
             )
             continue
 
-        block = TimeBlock(activity_id=activity.id_activity, day_of_week=row["day"], start_time=start_time, end_time=end_time)
+        room = (str(row.get("room")).strip() or None) if row.get("room") is not None else None
+        signature = (activity.id_activity, row["day"], start_time, end_time, room)
+        if signature in seen or db.query(TimeBlock).filter(
+            TimeBlock.activity_id == activity.id_activity,
+            TimeBlock.day_of_week == row["day"],
+            TimeBlock.start_time == start_time,
+            TimeBlock.end_time == end_time,
+            TimeBlock.room == room,
+        ).first():
+            skipped_duplicates += 1
+            continue
+        seen.add(signature)
+        block = TimeBlock(
+            activity_id=activity.id_activity,
+            day_of_week=row["day"],
+            start_time=start_time,
+            end_time=end_time,
+            room=room,
+        )
 
         db.add(block)
 
         created_blocks += 1
 
-    db.commit()
-
-    logger.info(f"Created {created_blocks} blocks for person {person_id}")
+    logger.info(f"Created {created_blocks} blocks for person {person_id}; skipped {skipped_duplicates} duplicates")
 
     return {
         "created_blocks": created_blocks
+        ,"skipped_duplicates": skipped_duplicates
     }

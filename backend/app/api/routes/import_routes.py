@@ -167,7 +167,7 @@ def _preview(file: UploadFile):
             return {
                 "success": False,
                 "schedule": [],
-                "errors": [{"type": "MANUAL_REVIEW_REQUIRED", "row": None, "message": f"No se pudo reconocer el horario: {error}. Introduce las filas manualmente."}],
+                "errors": [{"type": "OCR_MANUAL_REVIEW", "row": None, "message": f"No se pudo reconocer el horario: {error}. Introduce las filas manualmente."}],
                 "manual_review": True,
             }
         raise HTTPException(422, f"No se pudo interpretar el archivo: {error}") from error
