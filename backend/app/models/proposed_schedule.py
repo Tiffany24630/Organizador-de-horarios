@@ -2,6 +2,7 @@ from sqlalchemy import Integer
 from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import String
+from sqlalchemy import Text
 from sqlalchemy import Enum
 from app.models.enums import ProposalStatus
 from sqlalchemy.orm import Mapped
@@ -20,6 +21,9 @@ class ProposedSchedule(Base):
     
     attendance_percentage: Mapped[float] = mapped_column(Float)
     score: Mapped[float] = mapped_column(Float)
+    attending_count: Mapped[int] = mapped_column(Integer, default=0)
+    total_people: Mapped[int] = mapped_column(Integer, default=0)
+    explanation: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     status: Mapped[ProposalStatus] = mapped_column(Enum(ProposalStatus), default=ProposalStatus.PENDING)
 

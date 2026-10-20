@@ -1,6 +1,7 @@
 from sqlalchemy import Boolean
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
+from sqlalchemy import String, Text
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
@@ -14,6 +15,8 @@ class ProposalAttendance(Base):
     person_id: Mapped[int] = mapped_column(ForeignKey("persons.id_person", ondelete="CASCADE"))
     can_attend: Mapped[bool] = mapped_column(Boolean)
     available_minutes: Mapped[int] = mapped_column(Integer)
+    reason: Mapped[str | None] = mapped_column(String(250), nullable=True)
+    conflicts_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     proposal = relationship("ProposedSchedule", back_populates="attendances")
     person = relationship("Person", back_populates="proposal_attendances")

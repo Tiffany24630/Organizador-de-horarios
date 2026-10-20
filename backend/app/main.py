@@ -43,6 +43,17 @@ if "room" not in {column["name"] for column in inspect(engine).get_columns("time
     with engine.begin() as connection:
         connection.execute(text("ALTER TABLE time_blocks ADD COLUMN room VARCHAR(100)"))
 
+for table, column, definition in (
+    ("proposed_schedules", "attending_count", "INTEGER DEFAULT 0"),
+    ("proposed_schedules", "total_people", "INTEGER DEFAULT 0"),
+    ("proposed_schedules", "explanation", "TEXT"),
+    ("proposal_attendance", "reason", "VARCHAR(250)"),
+    ("proposal_attendance", "conflicts_json", "TEXT"),
+):
+    if column not in {item["name"] for item in inspect(engine).get_columns(table)}:
+        with engine.begin() as connection:
+            connection.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {definition}"))
+
 app = FastAPI(
     title="Organizador de horarios API",
     description="""
