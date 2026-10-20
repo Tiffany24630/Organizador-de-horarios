@@ -1,54 +1,26 @@
 from app.models.enums import DayOfWeek
+from app.services.parsers.day_mapper import normalize_day
 
-DAYS = {
-    "lunes": DayOfWeek.MONDAY,
-    "martes": DayOfWeek.TUESDAY,
-    "miercoles": DayOfWeek.WEDNESDAY,
-    "miércoles": DayOfWeek.WEDNESDAY,
-    "jueves": DayOfWeek.THURSDAY,
-    "viernes": DayOfWeek.FRIDAY,
-    "sabado": DayOfWeek.SATURDAY,
-    "sábado": DayOfWeek.SATURDAY,
-    "domingo": DayOfWeek.SUNDAY
-}
 
-HEADER_WORDS = {
-    "dia",
-    "día",
-    "inicio",
-    "fin",
-    "actividad"
-}
+HEADER_WORDS = {"dia", "día", "day", "inicio", "fin", "actividad", "asignatura", "aula", "salon", "salón"}
 
-def normalize_day(text: str):
-    text = text.lower().strip()
-
-    return DAYS.get(text)
 
 def detect_schedule_from_table(rows):
+    """Parse simple PDF tables with day/start/end/activity positional columns."""
     schedule = []
-
-    for row in rows:
-        first_column = str(row[0]).strip().lower()
-
-        if first_column in HEADER_WORDS:
+    for row in rows or []:
+        if not row or len(row) < 4:
             continue
-        
-        if len(row) < 4:
+        first = str(row[0] or "").strip().lower()
+        if first in HEADER_WORDS:
             continue
-
-        day = normalize_day(str(row[0]))
-
-        if not day:
+        try:
+            day = normalize_day(row[0])
+        except ValueError:
             continue
-
-        schedule.append(
-            {
-                "activity": str(row[3]),
-                "day": day,
-                "start": str(row[1]),
-                "end": str(row[2])
-            }
-        )
-
+        item = {"activity": str(row[3] or "").strip(), "day": day, "start": row[1], "end": row[2]}
+        if len(row) > 4 and row[4] not in (None, ""):
+            item["room"] = str(row[4]).strip()
+        if item["activity"]:
+            schedule.append(item)
     return schedule

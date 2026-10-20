@@ -94,7 +94,7 @@ class CompleteWorkflowTest(unittest.TestCase):
         preview = _preview(upload)
         self.assertFalse(preview["success"])
         self.assertEqual(preview["errors"][0]["type"], "OCR_MANUAL_REVIEW")
-        self.assertEqual(len(preview["schedule"]), 1)
+        self.assertEqual(len(preview["schedule"]), 0)
 
     def test_semicolon_csv_upload_is_parsed(self):
         content = "Actividad;Día;Inicio;Fin\nTrabajo;Lunes;08:00;09:00\n".encode()

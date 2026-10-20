@@ -1,111 +1,46 @@
-from datetime import datetime
 from collections import defaultdict
 
-def parse_time(value):
-    """
-    Convierte string u objeto a datetime.time
-    """
-    if hasattr(value, "time"):
-        return value.time()
+from app.services.parsers.value_normalizer import normalize_row, parse_time
 
-    value = str(value).strip()
-    formats = ["%H:%M", "%H:%M:%S"]
-
-    for fmt in formats:
-        try:
-            return datetime.strptime(value, fmt).time()
-        
-        except Exception:
-            continue
-
-    raise ValueError(f"Invalid time format: {value}")
-
-def validate_time_order(start, end):
-    return start < end
-
-def detect_overlaps(blocks):
-    """
-    Detecta traslapes por día
-    """
-
-    errors = []
-    grouped = defaultdict(list)
-
-    for b in blocks:
-        grouped[b["day"]].append(b)
-
-    for day, items in grouped.items():
-        items.sort(key=lambda x: x["start"])
-
-        for i in range(len(items) - 1):
-            current = items[i]
-            next_block = items[i + 1]
-
-            if current["end"] > next_block["start"]:
-                errors.append({
-                    "type": "OVERLAP",
-                    "day": day,
-                    "conflict": {
-                        "block_1": current,
-                        "block_2": next_block
-                    }
-                })
-
-    return errors
 
 def validate_schedule(schedule):
-    """
-    Valida estructura completa del horario importado
-    """
-
+    """Normalize and validate rows, retaining an error location for editing."""
     errors = []
     cleaned = []
+    editable = []
+    source_rows = list(schedule or [])
 
-    for i, row in enumerate(schedule):
+    for index, row in enumerate(source_rows):
+        row = dict(row or {})
         try:
-            activity = row.get("activity")
-            day = row.get("day")
-            start = row.get("start")
-            end = row.get("end")
-
-            if not all([activity, day, start, end]):
-                errors.append({
-                    "type": "MISSING_FIELD",
-                    "row": i,
-                    "data": row
-                })
-                continue
-
-            start_time = parse_time(start)
-            end_time = parse_time(end)
-
-            if not validate_time_order(start_time, end_time):
-                errors.append({
-                    "type": "INVALID_TIME_ORDER",
-                    "row": i,
-                    "data": row
-                })
-                continue
-
-            cleaned.append({
-                "activity": activity,
-                "day": day,
-                "start": start_time,
-                "end": end_time
+            if not all(row.get(field) not in (None, "") for field in ("activity", "day", "start", "end")):
+                raise ValueError("activity, day, start and end are required")
+            normalized = normalize_row(row)
+            if normalized["end"] <= normalized["start"]:
+                raise ValueError("End time must be after start time")
+            cleaned.append(normalized)
+            editable.append(normalized)
+        except Exception as error:
+            errors.append({"type": "ROW_INVALID", "row": index, "message": str(error), "data": row})
+            editable.append({
+                "activity": row.get("activity", ""), "day": row.get("day", ""),
+                "start": row.get("start", ""), "end": row.get("end", ""), "room": row.get("room") or None,
             })
 
-        except Exception as e:
-            errors.append({
-                "type": "PARSE_ERROR",
-                "row": i,
-                "error": str(e),
-                "data": row
-            })
+    grouped = defaultdict(list)
+    for index, row in enumerate(cleaned):
+        grouped[row["day"]].append((index, row))
+    for day, items in grouped.items():
+        items.sort(key=lambda item: item[1]["start"])
+        for (left_index, left), (right_index, right) in zip(items, items[1:]):
+            if left["end"] > right["start"]:
+                errors.append({
+                    "type": "OVERLAP", "row": right_index, "day": day,
+                    "message": "El bloque se superpone con otra fila del mismo día",
+                    "conflict": {"block_1": left, "block_2": right},
+                })
 
-    overlap_errors = detect_overlaps(cleaned)
+    return {"valid": not errors, "cleaned": cleaned, "editable": editable, "errors": errors}
 
-    return {
-        "valid": len(errors) == 0 and len(overlap_errors) == 0,
-        "cleaned": cleaned,
-        "errors": errors + overlap_errors
-    }
+
+__all__ = ["parse_time", "validate_schedule"]
