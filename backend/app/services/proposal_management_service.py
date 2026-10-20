@@ -36,8 +36,6 @@ def accept_proposal(proposal, db):
                 start_time=session.start_time,
                 end_time=session.end_time,
             ))
-    db.commit()
-
     return accepted
 
 def reject_proposal(proposal, db):
@@ -46,4 +44,3 @@ def reject_proposal(proposal, db):
     history = ProposalHistory(proposal_id=proposal.id_schedule, action="REJECTED")
 
     db.add(history)
-    db.commit()

@@ -30,6 +30,21 @@ class TimeBlockUpdate(BaseModel):
 
         return self
 
+class TimeBlockEdit(BaseModel):
+    activity_name: str
+    day_of_week: DayOfWeek
+    start_time: time
+    end_time: time
+    room: str | None = None
+
+    @model_validator(mode="after")
+    def validate_edit(self):
+        if not self.activity_name.strip():
+            raise ValueError("activity_name must not be empty")
+        if self.end_time <= self.start_time:
+            raise ValueError("end_time must be greater than start_time")
+        return self
+
 class TimeBlockResponse(BaseModel):
     id_block: int
     activity_id: int
