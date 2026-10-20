@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.database.connection import get_db
 from app.models.time_block import TimeBlock
 from app.models.activity import Activity
-from app.schemas.time_block import TimeBlockCreate, TimeBlockUpdate, TimeBlockResponse
+from app.schemas.time_block import TimeBlockCreate, TimeBlockUpdate, TimeBlockEdit, TimeBlockResponse
 
 router = APIRouter(prefix="/time-blocks", tags=["Time Blocks"])
 
@@ -51,8 +51,8 @@ def create_block(block: TimeBlockCreate, db: Session = Depends(get_db)):
     return new_block
 
 
-@router.put("/{block_id}", response_model=TimeBlockResponse)
-def update_block(block_id: int, block_data: TimeBlockUpdate, db: Session = Depends(get_db)):
+@router.put("/{block_id}/edit", response_model=TimeBlockResponse)
+def edit_block(block_id: int, block_data: TimeBlockEdit, db: Session = Depends(get_db)):
     block = db.get(TimeBlock, block_id)
 
     if not block:
@@ -61,16 +61,36 @@ def update_block(block_id: int, block_data: TimeBlockUpdate, db: Session = Depen
             detail="Block not found"
         )
 
+    activity = db.get(Activity, block.activity_id)
+    if not activity:
+        raise HTTPException(status_code=404, detail="Activity not found")
+    try:
+        activity.name = block_data.activity_name.strip()
+        block.day_of_week = block_data.day_of_week
+        block.start_time = block_data.start_time
+        block.end_time = block_data.end_time
+        block.room = block_data.room
+        db.commit()
+        db.refresh(block)
+        return block
+    except Exception:
+        db.rollback()
+        raise
+
+
+@router.put("/{block_id}", response_model=TimeBlockResponse)
+def update_block(block_id: int, block_data: TimeBlockUpdate, db: Session = Depends(get_db)):
+    block = db.get(TimeBlock, block_id)
+    if not block:
+        raise HTTPException(status_code=404, detail="Block not found")
     changes = block_data.model_dump(exclude_unset=True)
     block.day_of_week = changes["day_of_week"]
     block.start_time = changes["start_time"]
     block.end_time = changes["end_time"]
     if "room" in changes:
         block.room = changes["room"]
-
     db.commit()
     db.refresh(block)
-
     return block
 
 

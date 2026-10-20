@@ -64,8 +64,10 @@ def accept(proposal_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/")
-def get_proposals(offset: int = Query(0, ge=0), limit: int | None = Query(None, ge=1, le=500), db: Session = Depends(get_db)):
+def get_proposals(group_id: int | None = Query(None, ge=1), offset: int = Query(0, ge=0), limit: int | None = Query(None, ge=1, le=500), db: Session = Depends(get_db)):
     query = db.query(ProposedSchedule).order_by(ProposedSchedule.score.desc(), ProposedSchedule.id_schedule)
+    if group_id is not None:
+        query = query.filter(ProposedSchedule.group_id == group_id)
     total = query.count()
     items = query.offset(offset).limit(limit).all() if limit is not None else query.all()
     serialized = [_serialize(item) for item in items]

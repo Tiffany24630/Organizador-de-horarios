@@ -3,6 +3,8 @@
 import re
 from collections import defaultdict
 
+DAY_LINE_12_HOUR = re.compile(r"([^\s]+)\s+(\d{1,2}:\d{2}\s*(?:AM|PM))\s*[-–—-]\s*(\d{1,2}:\d{2}\s*(?:AM|PM))\s+(.+)", re.IGNORECASE)
+
 from app.services.parsers.day_mapper import normalize_day
 
 TIME_RANGE = re.compile(r"(\d{1,2}:\d{2})\s*[-–—]\s*(\d{1,2}:\d{2})")
@@ -20,17 +22,33 @@ def _is_day(value):
         return None
 
 
+def _activity_and_room(value):
+    text = _clean(value)
+    match = re.search(r"(?:aula|sal[oó]n|room|classroom)\s*[:#-]?\s*([^,;|]+)", text, re.IGNORECASE)
+    if not match:
+        return text, None
+    room = _clean(match.group(1))
+    # Keep the original OCR text in activity for backward compatibility; the
+    # extracted room is an additional field used by grouping and persistence.
+    return text, room or None
+
+
 def parse_schedule_text(text: str):
     """Parse OCR text where each entry includes its day and time range."""
     schedule = []
     for raw_line in (text or "").splitlines():
-        match = DAY_LINE.search(_clean(raw_line))
+        clean_line = _clean(raw_line)
+        match = DAY_LINE.search(clean_line) or DAY_LINE_12_HOUR.search(clean_line)
         if not match:
             continue
         day, start, end, activity = match.groups()
         normalized_day = _is_day(day)
         if normalized_day and activity.strip():
-            schedule.append({"activity": activity.strip(), "day": normalized_day, "start": start, "end": end})
+            activity, room = _activity_and_room(activity)
+            row = {"activity": activity, "day": normalized_day, "start": start, "end": end}
+            if room:
+                row["room"] = room
+            schedule.append(row)
     return schedule
 
 
@@ -150,5 +168,9 @@ def parse_schedule_ocr_data(data):
         activity = _clean(" ".join(word["text"] for word in words))
         if activity:
             _top, _bottom, start, end = row_bounds[row_index]
-            schedule.append({"activity": activity, "day": day, "start": start, "end": end})
+            activity, room = _activity_and_room(activity)
+            row = {"activity": activity, "day": day, "start": start, "end": end}
+            if room:
+                row["room"] = room
+            schedule.append(row)
     return sorted(schedule, key=lambda row: (row["day"].value, row["start"]))
