@@ -12,6 +12,7 @@
     "build:electron": "tsc -p electron/tsconfig.json",
     "build": "npm run build:web && npm run build:electron",
     "lint": "eslint .",
+    "test:grouping": "node --experimental-strip-types --test tests/scheduleGrouping.test.ts",
     "preview": "vite preview",
     "electron:dev": "npm run build:electron && concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && electron .\"",
     "backend:build": "..\\venv\\Scripts\\python.exe -m PyInstaller --noconfirm --clean --onedir --name organizador-backend --exclude-module pandas --exclude-module numpy --exclude-module scipy --exclude-module torch --exclude-module easyocr --distpath ../backend/dist --workpath ../backend/build --specpath ../backend ../backend/desktop_server.py",

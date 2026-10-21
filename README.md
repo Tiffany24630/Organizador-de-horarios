@@ -9,6 +9,7 @@ Aplicación web y de escritorio para registrar personas, importar y corregir sus
 - Importar CSV, Excel (`.xlsx`), PDF e imágenes (`.png`, `.jpg`, `.jpeg`).
 - Revisar las filas detectadas antes de guardarlas. Los PDF escaneados o imágenes que no puedan reconocerse abren una fila editable.
 - Generar, comparar y aceptar propuestas de actividades grupales.
+- Las propuestas buscan horarios entre 06:00 y 21:00; la precisión se puede ajustar desde la interfaz.
 - Ejecutar la misma interfaz como web, contenedor Docker o aplicación Electron para Windows.
 
 ## Desarrollo local
