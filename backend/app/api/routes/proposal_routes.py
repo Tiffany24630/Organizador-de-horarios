@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.database.connection import get_db
 from app.models.proposed_schedule import ProposedSchedule
+from app.models.activity_group import ActivityGroup
+from app.core.project_access import ProjectAccess, require_project_access
 from app.services.proposal_generator_service import generate_proposals
 from app.services.proposal_management_service import accept_proposal, reject_proposal
 
@@ -39,7 +41,9 @@ def _serialize(proposal):
 
 
 @router.post("/generate/{group_id}")
-def generate(group_id: int, slot_minutes: int = Query(20, ge=1, le=60), offset: int = Query(0, ge=0), limit: int | None = Query(None, ge=1, le=500), db: Session = Depends(get_db)):
+def generate(group_id: int, slot_minutes: int = Query(20, ge=1, le=60), offset: int = Query(0, ge=0), limit: int | None = Query(None, ge=1, le=500), context: ProjectAccess = Depends(require_project_access), db: Session = Depends(get_db)):
+    if not db.query(ActivityGroup).filter(ActivityGroup.id_group == group_id, ActivityGroup.project_id == context.project_id).first():
+        raise HTTPException(404, "Group not found")
     try:
         proposals = generate_proposals(group_id, db, slot_minutes=slot_minutes)
         if limit is not None:
@@ -50,8 +54,8 @@ def generate(group_id: int, slot_minutes: int = Query(20, ge=1, le=60), offset: 
 
 
 @router.put("/{proposal_id}/accept")
-def accept(proposal_id: int, db: Session = Depends(get_db)):
-    proposal = db.get(ProposedSchedule, proposal_id)
+def accept(proposal_id: int, context: ProjectAccess = Depends(require_project_access), db: Session = Depends(get_db)):
+    proposal = db.query(ProposedSchedule).join(ActivityGroup).filter(ProposedSchedule.id_schedule == proposal_id, ActivityGroup.project_id == context.project_id).first()
     if not proposal:
         raise HTTPException(404, "Proposal not found")
     try:
@@ -64,8 +68,8 @@ def accept(proposal_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/")
-def get_proposals(group_id: int | None = Query(None, ge=1), offset: int = Query(0, ge=0), limit: int | None = Query(None, ge=1, le=500), db: Session = Depends(get_db)):
-    query = db.query(ProposedSchedule).order_by(ProposedSchedule.score.desc(), ProposedSchedule.id_schedule)
+def get_proposals(group_id: int | None = Query(None, ge=1), offset: int = Query(0, ge=0), limit: int | None = Query(None, ge=1, le=500), context: ProjectAccess = Depends(require_project_access), db: Session = Depends(get_db)):
+    query = db.query(ProposedSchedule).join(ActivityGroup).filter(ActivityGroup.project_id == context.project_id).order_by(ProposedSchedule.score.desc(), ProposedSchedule.id_schedule)
     if group_id is not None:
         query = query.filter(ProposedSchedule.group_id == group_id)
     total = query.count()
@@ -75,16 +79,16 @@ def get_proposals(group_id: int | None = Query(None, ge=1), offset: int = Query(
 
 
 @router.get("/{proposal_id}")
-def get_proposal(proposal_id: int, db: Session = Depends(get_db)):
-    proposal = db.get(ProposedSchedule, proposal_id)
+def get_proposal(proposal_id: int, context: ProjectAccess = Depends(require_project_access), db: Session = Depends(get_db)):
+    proposal = db.query(ProposedSchedule).join(ActivityGroup).filter(ProposedSchedule.id_schedule == proposal_id, ActivityGroup.project_id == context.project_id).first()
     if not proposal:
         raise HTTPException(404, "Proposal not found")
     return _serialize(proposal)
 
 
 @router.put("/{proposal_id}/reject")
-def reject(proposal_id: int, db: Session = Depends(get_db)):
-    proposal = db.get(ProposedSchedule, proposal_id)
+def reject(proposal_id: int, context: ProjectAccess = Depends(require_project_access), db: Session = Depends(get_db)):
+    proposal = db.query(ProposedSchedule).join(ActivityGroup).filter(ProposedSchedule.id_schedule == proposal_id, ActivityGroup.project_id == context.project_id).first()
     if not proposal:
         raise HTTPException(404, "Proposal not found")
     reject_proposal(proposal, db)

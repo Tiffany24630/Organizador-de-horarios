@@ -9,3 +9,4 @@ pdfplumber
 pytesseract
 pillow
 psycopg[binary]
+argon2-cffi
