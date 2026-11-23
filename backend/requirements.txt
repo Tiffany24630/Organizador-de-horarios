@@ -8,3 +8,4 @@ openpyxl
 pdfplumber
 pytesseract
 pillow
+psycopg[binary]

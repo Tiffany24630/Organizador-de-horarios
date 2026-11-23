@@ -160,7 +160,7 @@ function SchedulesPanel({ people, selected, selectedPerson, setSelectedPerson, a
   return <section className="content">
     <div className="schedule-toolbar">
       <label>Horario de<select value={selectedPerson ?? ''} onChange={event => setSelectedPerson(Number(event.target.value))}><option value="" disabled>Selecciona una persona</option>{people.map(person => <option value={person.id_person} key={person.id_person}>{person.name}</option>)}</select></label>
-      <div>{selected && <><div className="avatar small">{selected.name[0]}</div><span><strong>{selected.name}</strong><small>{blocks.length} bloques ocupados · datos guardados en SQLite</small></span></>}</div>
+      <div>{selected && <><div className="avatar small">{selected.name[0]}</div><span><strong>{selected.name}</strong><small>{blocks.length} bloques ocupados · datos guardados en la base de datos</small></span></>}</div>
     </div>
     {!selected ? <div className="empty-state">Agrega una persona para comenzar su horario.</div> : <>
       {editingBlock && <ScheduleBlockEditor visualBlock={editingBlock} activities={activities} blocks={blocks} onCancel={() => setEditingBlock(null)} onSaved={async () => { setEditingBlock(null); await onChanged(); notify({ text: 'Horario actualizado' }) }} />}
