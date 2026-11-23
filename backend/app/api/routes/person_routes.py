@@ -4,18 +4,19 @@ from fastapi import HTTPException
 from fastapi import status
 from sqlalchemy.orm import Session
 from app.database.connection import get_db
+from app.core.project_access import ProjectAccess, require_project_access
 from app.models.person import Person
 from app.schemas.person import PersonCreate, PersonUpdate, PersonResponse
 
 router = APIRouter(prefix="/people", tags=["People"])
 
 @router.get("/", response_model=list[PersonResponse])
-def get_people(db: Session = Depends(get_db)):
-    return db.query(Person).all()
+def get_people(context: ProjectAccess = Depends(require_project_access), db: Session = Depends(get_db)):
+    return db.query(Person).filter(Person.project_id == context.project_id).all()
 
 @router.get("/{person_id}", response_model=PersonResponse)
-def get_person(person_id: int, db: Session = Depends(get_db)):
-    person = db.get(Person, person_id)
+def get_person(person_id: int, context: ProjectAccess = Depends(require_project_access), db: Session = Depends(get_db)):
+    person = db.query(Person).filter(Person.id_person == person_id, Person.project_id == context.project_id).first()
 
     if not person:
         raise HTTPException(status_code = 404, detail = "Person not found")
@@ -23,13 +24,13 @@ def get_person(person_id: int, db: Session = Depends(get_db)):
     return person
 
 @router.post("/", response_model=PersonResponse, status_code=status.HTTP_201_CREATED)
-def create_person(person: PersonCreate, db: Session = Depends(get_db)):
+def create_person(person: PersonCreate, context: ProjectAccess = Depends(require_project_access), db: Session = Depends(get_db)):
     exists = db.query(Person).filter(Person.email == person.email).first()
 
     if exists:
         raise HTTPException(status_code = 400, detail = "Person with this email already exists")
 
-    new_person = Person(name=person.name, email=person.email)
+    new_person = Person(name=person.name, email=person.email, project_id=context.project_id)
 
     db.add(new_person)
     db.commit()
@@ -38,8 +39,8 @@ def create_person(person: PersonCreate, db: Session = Depends(get_db)):
     return new_person
 
 @router.put("/{person_id}", response_model=PersonResponse)
-def update_person(person_id: int, person_data: PersonUpdate, db: Session = Depends(get_db)):
-    person = db.get(Person, person_id)
+def update_person(person_id: int, person_data: PersonUpdate, context: ProjectAccess = Depends(require_project_access), db: Session = Depends(get_db)):
+    person = db.query(Person).filter(Person.id_person == person_id, Person.project_id == context.project_id).first()
 
     if not person:
         raise HTTPException(status_code = 404, detail = "Person not found")
@@ -61,8 +62,8 @@ def update_person(person_id: int, person_data: PersonUpdate, db: Session = Depen
     return person
 
 @router.delete("/{person_id}")
-def delete_person(person_id: int, db: Session = Depends(get_db)):
-    person = db.get(Person, person_id)
+def delete_person(person_id: int, context: ProjectAccess = Depends(require_project_access), db: Session = Depends(get_db)):
+    person = db.query(Person).filter(Person.id_person == person_id, Person.project_id == context.project_id).first()
 
     if not person:
         raise HTTPException(status_code = 404, detail = "Person not found")

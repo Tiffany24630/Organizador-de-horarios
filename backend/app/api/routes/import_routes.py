@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.database.connection import get_db
 from app.models.enums import DayOfWeek
 from app.models.person import Person
+from app.core.project_access import ProjectAccess, require_project_access
 from app.services.import_schedule_service import import_schedule
 from app.services.parsers.generic_schedule_parser import parse_dataframe
 from app.services.parsers.image_parser import extract_ocr_data_from_image, extract_text_from_image
@@ -173,8 +174,8 @@ def _preview(file: UploadFile):
         raise HTTPException(422, f"No se pudo interpretar el archivo: {error}") from error
 
 
-def _save_schedule(person_id, rows, replace_existing, db):
-    person = db.get(Person, person_id)
+def _save_schedule(person_id, rows, replace_existing, db, project_id):
+    person = db.query(Person).filter(Person.id_person == person_id, Person.project_id == project_id).first()
     if not person:
         raise HTTPException(404, "Person not found")
     if not rows:
@@ -203,14 +204,14 @@ async def preview_file(file: UploadFile = File(...)):
 
 
 @router.post("/save")
-def save_edited_schedule(payload: ScheduleImportRequest, db: Session = Depends(get_db)):
+def save_edited_schedule(payload: ScheduleImportRequest, context: ProjectAccess = Depends(require_project_access), db: Session = Depends(get_db)):
     rows = [row.model_dump() for row in payload.schedule]
-    return {"success": True, "imported": _save_schedule(payload.person_id, rows, payload.replace_existing, db)}
+    return {"success": True, "imported": _save_schedule(payload.person_id, rows, payload.replace_existing, db, context.project_id)}
 
 
 @router.post("/excel/save")
-async def import_and_save(person_id: int = Form(...), file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def import_and_save(person_id: int = Form(...), file: UploadFile = File(...), context: ProjectAccess = Depends(require_project_access), db: Session = Depends(get_db)):
     preview = _preview(file)
     if not preview["success"]:
         return preview
-    return {"success": True, "imported": _save_schedule(person_id, preview["schedule"], False, db)}
+    return {"success": True, "imported": _save_schedule(person_id, preview["schedule"], False, db, context.project_id)}

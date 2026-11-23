@@ -1,9 +1,9 @@
 import os
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database.base import Base
-from app.database.connection import engine
+from app.database.connection import engine, SessionLocal
 from app.models.person import Person
 from app.models.activity import Activity
 from app.models.space import Space
@@ -17,6 +17,13 @@ from app.models.accepted_schedule import AcceptedSchedule
 from app.models.proposal_history import ProposalHistory
 from app.models.proposed_schedule import ProposedSchedule
 from app.models.proposed_session import ProposedSession
+from app.models.user import User, UserSession, PasswordRecoveryRequest
+from app.models.project import Project, ProjectMembership, ProjectInvite, GuestSession
+from app.core.security import hash_password, normalize_email, validate_password
+from app.core.project_access import require_project_access
+from app.api.routes.auth_routes import router as auth_router
+from app.api.routes.admin_routes import router as admin_router
+from app.api.routes.project_routes import router as project_router
 from app.core.logger import logger
 from app.api.routes.statistics_routes import router as statistics_router
 from app.api.routes.person_routes import router as person_router
@@ -37,6 +44,45 @@ from app.api.routes.proposal_history_routes import router as proposal_history_ro
 from sqlalchemy import inspect, text
 
 Base.metadata.create_all(bind=engine)
+
+# Project ownership is introduced after the original SQLite schema. Keep the
+# migration additive so existing local databases can still be opened safely.
+for table in ("persons", "activity_groups", "spaces"):
+    if "project_id" not in {column["name"] for column in inspect(engine).get_columns(table)}:
+        with engine.begin() as connection:
+            connection.execute(text(f"ALTER TABLE {table} ADD COLUMN project_id INTEGER"))
+
+
+def bootstrap_superadmin() -> None:
+    email = os.environ.get("BOOTSTRAP_ADMIN_EMAIL", "").strip()
+    password = os.environ.get("BOOTSTRAP_ADMIN_PASSWORD", "")
+    name = os.environ.get("BOOTSTRAP_ADMIN_NAME", "Superadmin").strip() or "Superadmin"
+    if not email or not password:
+        return
+    try:
+        validate_password(password)
+    except ValueError:
+        return
+    db = SessionLocal()
+    try:
+        email = normalize_email(email)
+        if db.query(User).filter(User.system_role == "superadmin").first():
+            return
+        if db.query(User).filter(User.email == email).first():
+            return
+        db.add(User(
+            name=name,
+            email=email,
+            password_hash=hash_password(password),
+            system_role="superadmin",
+            must_change_password=True,
+        ))
+        db.commit()
+    finally:
+        db.close()
+
+
+bootstrap_superadmin()
 
 # create_all does not alter an already existing SQLite table. Keep desktop
 # databases created by older versions usable without requiring a destructive
@@ -81,7 +127,8 @@ app.add_middleware(
         "http://localhost:5173,http://127.0.0.1:5173,null",
     ).split(",") if origin.strip()],
     allow_methods = ["*"],
-    allow_headers = ["*"]
+    allow_headers = ["*"],
+    allow_credentials = True,
 )
 
 @app.get("/health")
@@ -108,19 +155,26 @@ async def log_requests(request, call_next):
 
     return response
 
-app.include_router(person_router)
-app.include_router(activity_router)
-app.include_router(space_router)
-app.include_router(time_block_router)
-app.include_router(availability_router)
-app.include_router(proposal_router)
-app.include_router(group_router)
-app.include_router(group_participant_router)
-app.include_router(restriction_router)
-app.include_router(space_reservation_router)
-app.include_router(import_router)
-app.include_router(proposal_attendance_router)
-app.include_router(proposed_session_router)
-app.include_router(accepted_schedule_router)
-app.include_router(proposal_history_router)
-app.include_router(statistics_router)
+# All scheduling/data endpoints require an authenticated member or a valid
+# project invitation. Authentication and project management routes below are
+# intentionally public or protected by their own dependencies.
+project_dependency = [Depends(require_project_access)]
+app.include_router(person_router, dependencies=project_dependency)
+app.include_router(activity_router, dependencies=project_dependency)
+app.include_router(space_router, dependencies=project_dependency)
+app.include_router(time_block_router, dependencies=project_dependency)
+app.include_router(availability_router, dependencies=project_dependency)
+app.include_router(proposal_router, dependencies=project_dependency)
+app.include_router(group_router, dependencies=project_dependency)
+app.include_router(group_participant_router, dependencies=project_dependency)
+app.include_router(restriction_router, dependencies=project_dependency)
+app.include_router(space_reservation_router, dependencies=project_dependency)
+app.include_router(import_router, dependencies=project_dependency)
+app.include_router(proposal_attendance_router, dependencies=project_dependency)
+app.include_router(proposed_session_router, dependencies=project_dependency)
+app.include_router(accepted_schedule_router, dependencies=project_dependency)
+app.include_router(proposal_history_router, dependencies=project_dependency)
+app.include_router(statistics_router, dependencies=project_dependency)
+app.include_router(auth_router)
+app.include_router(admin_router)
+app.include_router(project_router)

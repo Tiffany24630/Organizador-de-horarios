@@ -5,12 +5,13 @@ from sqlalchemy.orm import Session
 from app.database.connection import get_db
 from app.models.activity_group import ActivityGroup
 from app.schemas.activity_group import ActivityGroupCreate, ActivityGroupUpdate, ActivityGroupResponse
+from app.core.project_access import ProjectAccess, require_project_access
 
 router = APIRouter(prefix="/groups", tags=["Groups"])
 
 @router.post("/", response_model=ActivityGroupResponse)
-def create_group(group: ActivityGroupCreate, db: Session = Depends(get_db)):
-    new_group = ActivityGroup(**group.model_dump())
+def create_group(group: ActivityGroupCreate, context: ProjectAccess = Depends(require_project_access), db: Session = Depends(get_db)):
+    new_group = ActivityGroup(**group.model_dump(), project_id=context.project_id)
 
     db.add(new_group)
     db.commit()
@@ -19,12 +20,12 @@ def create_group(group: ActivityGroupCreate, db: Session = Depends(get_db)):
     return new_group
 
 @router.get("/", response_model=list[ActivityGroupResponse])
-def get_groups(db: Session = Depends(get_db)):
-    return db.query(ActivityGroup).all()
+def get_groups(context: ProjectAccess = Depends(require_project_access), db: Session = Depends(get_db)):
+    return db.query(ActivityGroup).filter(ActivityGroup.project_id == context.project_id).all()
 
 @router.get("/{group_id}", response_model=ActivityGroupResponse)
-def get_group(group_id: int, db: Session = Depends(get_db)):
-    group = db.get(ActivityGroup, group_id)
+def get_group(group_id: int, context: ProjectAccess = Depends(require_project_access), db: Session = Depends(get_db)):
+    group = db.query(ActivityGroup).filter(ActivityGroup.id_group == group_id, ActivityGroup.project_id == context.project_id).first()
 
     if not group:
         raise HTTPException(404, "Group not found")
@@ -32,8 +33,8 @@ def get_group(group_id: int, db: Session = Depends(get_db)):
     return group
 
 @router.put("/{group_id}", response_model=ActivityGroupResponse)
-def update_group(group_id: int, data: ActivityGroupUpdate, db: Session = Depends(get_db)):
-    group = db.get(ActivityGroup, group_id)
+def update_group(group_id: int, data: ActivityGroupUpdate, context: ProjectAccess = Depends(require_project_access), db: Session = Depends(get_db)):
+    group = db.query(ActivityGroup).filter(ActivityGroup.id_group == group_id, ActivityGroup.project_id == context.project_id).first()
 
     if not group:
         raise HTTPException(404, "Group not found")
@@ -47,8 +48,8 @@ def update_group(group_id: int, data: ActivityGroupUpdate, db: Session = Depends
     return group
 
 @router.delete("/{group_id}")
-def delete_group(group_id: int, db: Session = Depends(get_db)):
-    group = db.get(ActivityGroup, group_id)
+def delete_group(group_id: int, context: ProjectAccess = Depends(require_project_access), db: Session = Depends(get_db)):
+    group = db.query(ActivityGroup).filter(ActivityGroup.id_group == group_id, ActivityGroup.project_id == context.project_id).first()
 
     if not group:
         raise HTTPException(404, "Group not found")

@@ -2,6 +2,7 @@ from datetime import date
 from sqlalchemy import Boolean
 from sqlalchemy import Date
 from sqlalchemy import Integer
+from sqlalchemy import ForeignKey
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
@@ -12,6 +13,7 @@ class ActivityGroup(Base):
     __tablename__ = "activity_groups"
 
     id_group: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id_project", ondelete="CASCADE"), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(150), nullable=False)
     description: Mapped[str | None] = mapped_column(String(500), nullable=True)
     sessions_per_week: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -24,3 +26,4 @@ class ActivityGroup(Base):
     participants = relationship("GroupParticipant", back_populates="group", cascade="all, delete-orphan")
     restrictions = relationship("Restriction", back_populates="group", cascade="all, delete-orphan")
     schedules = relationship("ProposedSchedule", back_populates="group", cascade="all, delete-orphan")
+    project = relationship("Project")
