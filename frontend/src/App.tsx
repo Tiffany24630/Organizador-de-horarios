@@ -20,7 +20,7 @@ type GuestProject = Project & { guest_permission?: string; display_name?: string
 
 const days = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']
 const dayNames: Record<string, string> = { MONDAY: 'Lunes', TUESDAY: 'Martes', WEDNESDAY: 'Miércoles', THURSDAY: 'Jueves', FRIDAY: 'Viernes', SATURDAY: 'Sábado', SUNDAY: 'Domingo' }
-const apiBase = import.meta.env.VITE_API_URL || (window.location.protocol === 'file:' ? 'https://organizador-de-horarios-jtqu.onrender.com' : '/api')
+const apiBase = import.meta.env.VITE_API_URL || (window.location.protocol === 'file:' ? 'http://127.0.0.1:8765' : '/api')
 let activeProjectId: number | null = null
 
 async function api<T>(path: string, options?: RequestInit): Promise<T> {
@@ -100,7 +100,7 @@ function App() {
 
   if (authLoading) return <div className="empty-state"><span className="spinner" /> Cargando sesión…</div>
   if (!user && !guestProject && inviteToken) return <GuestInviteScreen token={inviteToken} onAccepted={project => { activeProjectId = project.id_project; setProjectId(project.id_project); setProjects([project]); setGuestProject(project) }} />
-  if (!user && !guestProject) return <LoginScreen onLogin={async () => { const current = await api<CurrentUser>('/auth/me'); setUser(current); if (!current.must_change_password) await loadProjects() }} />
+  if (!user && !guestProject) return <BeautifulLoginScreen onLogin={async () => { const current = await api<CurrentUser>('/auth/me'); setUser(current); if (!current.must_change_password) await loadProjects() }} />
   if (user?.must_change_password) return <PasswordChangeScreen onChanged={async () => { const current = await api<CurrentUser>('/auth/me'); setUser(current); await loadProjects() }} />
   if (user && projects.length === 0) return <ProjectPicker user={user} onChanged={loadProjects} onLogout={async () => { await api('/auth/logout', { method: 'POST' }); setUser(null) }} />
   const selectedProject = projects.find(project => project.id_project === projectId) ?? projects[0]
@@ -137,7 +137,23 @@ function App() {
   )
 }
 
-function LoginScreen({ onLogin }: { onLogin: () => Promise<void> }) {
+function BeautifulLoginScreen({ onLogin }: { onLogin: () => Promise<void> }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const submit = async (event: FormEvent) => {
+    event.preventDefault(); setError(''); setBusy(true)
+    try { await api('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }); await onLogin() }
+    catch (value) { setError(value instanceof Error ? value.message : 'No se pudo iniciar sesión') }
+    finally { setBusy(false) }
+  }
+  const requestRecovery = () => { const message = window.prompt('Escribe un mensaje breve para el superadmin'); if (message) void api('/auth/recovery-requests', { method: 'POST', body: JSON.stringify({ email, message }) }) }
+  return <main className="auth-shell"><section className="auth-card"><div className="auth-visual"><div className="auth-brand"><span className="auth-mark">OH</span><span><strong>Organizador</strong><small>de horarios</small></span></div><div className="auth-visual-copy"><span className="auth-kicker">TU TIEMPO, MEJOR ORGANIZADO</span><h1>Planifica juntos.<br /><em>Avanza mejor.</em></h1><p>Coordina personas, disponibilidades y actividades desde un solo espacio de trabajo.</p><div className="auth-benefits"><span><i>✓</i> Proyectos colaborativos</span><span><i>✓</i> Horarios siempre claros</span><span><i>✓</i> Acceso seguro desde cualquier lugar</span></div></div><div className="auth-orbit auth-orbit-one" /><div className="auth-orbit auth-orbit-two" /></div><form className="auth-form" onSubmit={submit}><div className="auth-form-heading"><span className="eyebrow">ESPACIO DE TRABAJO</span><h2>Bienvenido de nuevo</h2><p>Ingresa para continuar con tus proyectos.</p></div><label>Correo electrónico<input type="email" value={email} onChange={event => setEmail(event.target.value)} required autoComplete="email" placeholder="tu@correo.com" /></label><label>Contraseña<div className="password-field"><input type={showPassword ? 'text' : 'password'} value={password} onChange={event => setPassword(event.target.value)} required autoComplete="current-password" placeholder="Tu contraseña" /><button type="button" aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} onClick={() => setShowPassword(value => !value)}>{showPassword ? 'Ocultar' : 'Mostrar'}</button></div></label>{error && <div className="auth-error" role="alert"><strong>No pudimos iniciar sesión</strong><span>{error}</span></div>}<button className="primary auth-submit" disabled={busy}>{busy ? <><span className="spinner" /> Verificando…</> : 'Iniciar sesión'}</button><button type="button" className="recovery-button" onClick={requestRecovery}>¿Olvidaste tu contraseña?</button><div className="auth-divider"><span>o</span></div><a className="guest-link" href="/">¿Tienes un enlace de invitación? Ábrelo para entrar como invitado.</a></form></section><p className="auth-footer">Tus datos están protegidos y solo son visibles para los proyectos a los que perteneces.</p></main>
+}
+
+export function LoginScreen({ onLogin }: { onLogin: () => Promise<void> }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
