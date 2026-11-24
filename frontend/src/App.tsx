@@ -4,7 +4,7 @@ import { groupScheduleBlocks, type VisualScheduleBlock } from './scheduleGroupin
 import EnhancedPlanner from './ProposalPlanner'
 import { findBlockConflicts, validateEditForm } from './timeBlockEditing'
 
-type View = 'personas' | 'horarios' | 'planificar'
+type View = 'personas' | 'horarios' | 'planificar' | 'proyectos' | 'admin'
 type Person = { id_person: number; name: string; email: string; active: boolean }
 type Activity = { id_activity: number; person_id: number; name: string; type: string; description?: string }
 type Block = { id_block: number; activity_id: number; day_of_week: string; start_time: string; end_time: string; room?: string | null }
@@ -14,15 +14,23 @@ type ProposalConflict = { session: { day: string; start: string; end: string }; 
 type ProposalPerson = { person_id: number; name?: string; minutes: number; minutes_per_session: number[]; can_attend: boolean; reason?: string | null; conflicts?: ProposalConflict[] }
 type Proposal = { proposal_id: number; name: string; score: number; attendance: number; attending_count: number; total_people: number; explanation: string; sessions: { day: string; start: string; end: string }[]; people: ProposalPerson[] }
 type DayRange = { enabled: boolean; start: string; end: string }
+type CurrentUser = { id_user: number; name: string; email: string; system_role: string; must_change_password: boolean }
+type Project = { id_project: number; name: string; description?: string; owner_id: number; archived: boolean; permission?: string }
+type GuestProject = Project & { guest_permission?: string; display_name?: string }
 
 const days = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']
 const dayNames: Record<string, string> = { MONDAY: 'Lunes', TUESDAY: 'Martes', WEDNESDAY: 'Miércoles', THURSDAY: 'Jueves', FRIDAY: 'Viernes', SATURDAY: 'Sábado', SUNDAY: 'Domingo' }
-const apiBase = import.meta.env.VITE_API_URL || (window.location.protocol === 'file:' ? 'http://127.0.0.1:8765' : '/api')
+const apiBase = import.meta.env.VITE_API_URL || (window.location.protocol === 'file:' ? 'https://organizador-de-horarios-jtqu.onrender.com' : '/api')
+let activeProjectId: number | null = null
 
 async function api<T>(path: string, options?: RequestInit): Promise<T> {
+  const headers = new Headers(options?.headers)
+  if (!(options?.body instanceof FormData)) headers.set('Content-Type', 'application/json')
+  if (activeProjectId !== null && !headers.has('X-Project-ID')) headers.set('X-Project-ID', String(activeProjectId))
   const response = await fetch(`${apiBase}${path}`, {
     ...options,
-    headers: options?.body instanceof FormData ? options.headers : { 'Content-Type': 'application/json', ...options?.headers },
+    credentials: 'include',
+    headers,
   })
   if (!response.ok) {
     const body = await response.json().catch(() => ({ detail: 'Error de conexión' }))
@@ -32,6 +40,11 @@ async function api<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 function App() {
+  const [user, setUser] = useState<CurrentUser | null>(null)
+  const [guestProject, setGuestProject] = useState<GuestProject | null>(null)
+  const [projects, setProjects] = useState<Project[]>([])
+  const [projectId, setProjectId] = useState<number | null>(null)
+  const [authLoading, setAuthLoading] = useState(true)
   const [view, setView] = useState<View>('personas')
   const [people, setPeople] = useState<Person[]>([])
   const [activities, setActivities] = useState<Activity[]>([])
@@ -39,6 +52,15 @@ function App() {
   const [selectedPerson, setSelectedPerson] = useState<number | null>(null)
   const [notice, setNotice] = useState<{ text: string; error?: boolean } | null>(null)
   const [loading, setLoading] = useState(true)
+  const inviteToken = window.location.pathname.match(/^\/invite\/([^/]+)/)?.[1]
+
+  const loadProjects = async () => {
+    const data = await api<Project[]>('/projects')
+    setProjects(data)
+    const nextId = data.some(project => project.id_project === projectId) ? projectId : data[0]?.id_project ?? null
+    activeProjectId = nextId
+    setProjectId(nextId)
+  }
 
   const reload = async () => {
     try {
@@ -55,7 +77,16 @@ function App() {
   }
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { void reload() }, [])
+  useEffect(() => {
+    void (async () => {
+      try {
+        const current = await api<CurrentUser>('/auth/me')
+        setUser(current)
+        if (!current.must_change_password) await loadProjects()
+      } catch { setUser(null) } finally { setAuthLoading(false) }
+    })()
+  }, [])
+  useEffect(() => { if ((user || guestProject) && projectId !== null) void reload() }, [user, guestProject, projectId])
   useEffect(() => {
     if (!notice) return
     const timer = window.setTimeout(() => setNotice(null), 4500)
@@ -67,11 +98,21 @@ function App() {
   const activityIds = new Set(personActivities.map(activity => activity.id_activity))
   const personBlocks = blocks.filter(block => activityIds.has(block.activity_id))
 
+  if (authLoading) return <div className="empty-state"><span className="spinner" /> Cargando sesión…</div>
+  if (!user && !guestProject && inviteToken) return <GuestInviteScreen token={inviteToken} onAccepted={project => { activeProjectId = project.id_project; setProjectId(project.id_project); setProjects([project]); setGuestProject(project) }} />
+  if (!user && !guestProject) return <LoginScreen onLogin={async () => { const current = await api<CurrentUser>('/auth/me'); setUser(current); if (!current.must_change_password) await loadProjects() }} />
+  if (user?.must_change_password) return <PasswordChangeScreen onChanged={async () => { const current = await api<CurrentUser>('/auth/me'); setUser(current); await loadProjects() }} />
+  if (user && projects.length === 0) return <ProjectPicker user={user} onChanged={loadProjects} onLogout={async () => { await api('/auth/logout', { method: 'POST' }); setUser(null) }} />
+  const selectedProject = projects.find(project => project.id_project === projectId) ?? projects[0]
+  activeProjectId = selectedProject.id_project
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand"><span className="brand-mark">OH</span><span><strong>Organizador</strong><small>de horarios</small></span></div>
         <nav>
+          <NavButton active={view === 'proyectos'} icon="⌂" label="Proyectos" onClick={() => setView('proyectos')} count={projects.length} />
+          {user?.system_role === 'superadmin' && <NavButton active={view === 'admin'} icon="⚙" label="Administración" onClick={() => setView('admin')} />}
           <NavButton active={view === 'personas'} icon="♙" label="Personas" onClick={() => setView('personas')} count={people.length} />
           <NavButton active={view === 'horarios'} icon="▦" label="Horarios" onClick={() => setView('horarios')} />
           <NavButton active={view === 'planificar'} icon="✦" label="Planificar actividad" onClick={() => setView('planificar')} />
@@ -80,9 +121,12 @@ function App() {
 
       <main>
         <header className="topbar"><div><span className="eyebrow">ORGANIZADOR DE HORARIOS</span><h1>{view === 'personas' ? 'Personas' : view === 'horarios' ? 'Horarios individuales' : 'Planificar una actividad'}</h1></div><button className="primary" onClick={() => setView('planificar')}>＋ Nueva actividad</button></header>
+        <div className="project-switcher"><label>Proyecto <select value={selectedProject.id_project} onChange={event => { const id = Number(event.target.value); activeProjectId = id; setProjectId(id) }}>{projects.map(project => <option key={project.id_project} value={project.id_project}>{project.name}</option>)}</select></label>{user && <button className="link-button" onClick={async () => { await api('/auth/logout', { method: 'POST' }); setUser(null) }}>Salir</button>}</div>
         {notice && <div className={`toast ${notice.error ? 'error' : ''}`}>{notice.text}</div>}
         {loading ? <div className="empty-state"><span className="spinner" /> Cargando espacio de trabajo…</div> : (
           <>
+            {view === 'proyectos' && <ProjectDashboard projects={projects} activeProject={selectedProject} isGuest={!user} onChanged={loadProjects} notify={setNotice} />}
+            {view === 'admin' && user?.system_role === 'superadmin' && <AdminPanel notify={setNotice} />}
             {view === 'personas' && <PeoplePanel people={people} onChanged={reload} notify={setNotice} onOpenSchedule={id => { setSelectedPerson(id); setView('horarios') }} />}
             {view === 'horarios' && <SchedulesPanel people={people} selected={selected} selectedPerson={selectedPerson} setSelectedPerson={setSelectedPerson} activities={personActivities} blocks={personBlocks} onChanged={reload} notify={setNotice} />}
             {view === 'planificar' && <EnhancedPlanner people={people.filter(person => person.active)} notify={setNotice} onAccepted={async () => { await reload(); setView('horarios') }} api={api} />}
@@ -91,6 +135,73 @@ function App() {
       </main>
     </div>
   )
+}
+
+function LoginScreen({ onLogin }: { onLogin: () => Promise<void> }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const submit = async (event: FormEvent) => { event.preventDefault(); setError(''); try { await api('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }); await onLogin() } catch (value) { setError(value instanceof Error ? value.message : 'No se pudo iniciar sesión') } }
+  const requestRecovery = () => { const message = window.prompt('Escribe un mensaje para el superadmin'); if (message) void api('/auth/recovery-requests', { method: 'POST', body: JSON.stringify({ email, message }) }) }
+  return <main className="auth-shell"><form className="panel form-card" onSubmit={submit}><span className="eyebrow">ORGANIZADOR DE HORARIOS</span><h1>Iniciar sesión</h1><label>Correo electrónico<input type="email" value={email} onChange={event => setEmail(event.target.value)} required autoComplete="email" /></label><label>Contraseña<input type="password" value={password} onChange={event => setPassword(event.target.value)} required autoComplete="current-password" /></label>{error && <div className="toast error">{error}</div>}<button className="primary">Entrar</button><button type="button" className="link-button" onClick={requestRecovery}>Solicitar recuperación</button></form></main>
+}
+
+function GuestInviteScreen({ token, onAccepted }: { token: string; onAccepted: (project: GuestProject) => void }) {
+  const [displayName, setDisplayName] = useState('')
+  const [accessKey, setAccessKey] = useState('')
+  const [error, setError] = useState('')
+  const submit = async (event: FormEvent) => {
+    event.preventDefault()
+    try {
+      const result = await api<{ project: GuestProject; display_name: string; permission: string }>(`/projects/invites/${encodeURIComponent(token)}/accept`, { method: 'POST', body: JSON.stringify({ display_name: displayName, access_key: accessKey || null }) })
+      onAccepted({ ...result.project, permission: result.permission, display_name: result.display_name })
+    } catch (value) { setError(value instanceof Error ? value.message : 'La invitación no es válida') }
+  }
+  return <main className="auth-shell"><form className="panel form-card" onSubmit={submit}><span className="eyebrow">INVITACIÓN A PROYECTO</span><h1>Acceder como invitado</h1><p>Escribe tu nombre para entrar. También puedes iniciar sesión desde la pantalla principal si tienes una cuenta.</p><label>Tu nombre<input value={displayName} onChange={event => setDisplayName(event.target.value)} required /></label><label>Clave del enlace (si la tienes)<input type="password" value={accessKey} onChange={event => setAccessKey(event.target.value)} /></label>{error && <div className="toast error">{error}</div>}<button className="primary">Entrar al proyecto</button><a className="link-button" href="/">Iniciar sesión</a></form></main>
+}
+
+function ProjectDashboard({ projects, activeProject, isGuest, onChanged, notify }: { projects: Project[]; activeProject: Project; isGuest: boolean; onChanged: () => Promise<void>; notify: (value: { text: string; error?: boolean }) => void }) {
+  const [name, setName] = useState('')
+  const [permission, setPermission] = useState<'viewer' | 'editor'>('viewer')
+  const [inviteUrl, setInviteUrl] = useState('')
+  const [archived, setArchived] = useState<Project[]>([])
+  const [members, setMembers] = useState<Array<{ id_user: number; name: string; email: string; permission: string }>>([])
+  const [targetUserId, setTargetUserId] = useState('')
+  const [transferPassword, setTransferPassword] = useState('')
+  useEffect(() => { if (!isGuest) void api<Project[]>('/projects?include_archived=true').then(data => setArchived(data.filter(project => project.archived))) }, [isGuest])
+  useEffect(() => { if (!isGuest && activeProject.permission === 'owner') void api<typeof members>(`/projects/${activeProject.id_project}/members`).then(setMembers) }, [activeProject.id_project, activeProject.permission, isGuest])
+  const createProject = async (event: FormEvent) => { event.preventDefault(); try { await api('/projects', { method: 'POST', body: JSON.stringify({ name, guest_access_enabled: true }) }); setName(''); await onChanged(); notify({ text: 'Proyecto creado' }) } catch (value) { notify({ text: value instanceof Error ? value.message : 'No se pudo crear el proyecto', error: true }) } }
+  const createInvite = async () => { try { const result = await api<{ token: string }>(`/projects/${activeProject.id_project}/invites`, { method: 'POST', body: JSON.stringify({ permission, expires_in_hours: 168 }) }); const url = `${window.location.origin}/invite/${result.token}`; setInviteUrl(url); await navigator.clipboard?.writeText(url); notify({ text: 'Enlace creado y copiado' }) } catch (value) { notify({ text: value instanceof Error ? value.message : 'No se pudo crear el enlace', error: true }) } }
+  const archive = async () => { if (!window.confirm('¿Archivar este proyecto?')) return; try { await api(`/projects/${activeProject.id_project}`, { method: 'DELETE' }); await onChanged(); notify({ text: 'Proyecto archivado' }) } catch (value) { notify({ text: value instanceof Error ? value.message : 'No se pudo archivar', error: true }) } }
+  const transfer = async (event: FormEvent) => { event.preventDefault(); try { await api(`/projects/${activeProject.id_project}/transfer`, { method: 'POST', body: JSON.stringify({ target_user_id: Number(targetUserId), current_password: transferPassword }) }); setTransferPassword(''); await onChanged(); notify({ text: 'Propiedad transferida' }) } catch (value) { notify({ text: value instanceof Error ? value.message : 'No se pudo transferir', error: true }) } }
+  const restore = async (id: number) => { try { await api(`/projects/${id}/restore`, { method: 'POST' }); setArchived(current => current.filter(project => project.id_project !== id)); await onChanged(); notify({ text: 'Proyecto restaurado' }) } catch (value) { notify({ text: value instanceof Error ? value.message : 'No se pudo restaurar', error: true }) } }
+  return <section className="content two-column"><div className="panel"><span className="eyebrow">DASHBOARD</span><h2>Tus proyectos</h2><div className="people-list">{projects.map(project => <article key={project.id_project}><strong>{project.name}</strong><span>{project.permission === 'owner' ? 'Propietario' : project.permission === 'editor' ? 'Puede editar' : 'Solo lectura'}</span></article>)}</div>{!isGuest && <form className="form-card" onSubmit={createProject}><h3>Nuevo proyecto</h3><label>Nombre<input value={name} onChange={event => setName(event.target.value)} required /></label><button className="primary">Crear proyecto</button></form>}{archived.length > 0 && <><span className="eyebrow">ARCHIVADOS</span>{archived.map(project => <article key={project.id_project}><strong>{project.name}</strong><button className="link-button" onClick={() => void restore(project.id_project)}>Restaurar</button></article>)}</>}</div>{!isGuest && activeProject.permission === 'owner' && <div className="panel form-card"><span className="eyebrow">INVITAR</span><h2>{activeProject.name}</h2><label>Permiso<select value={permission} onChange={event => setPermission(event.target.value as 'viewer' | 'editor')}><option value="viewer">Solo ver</option><option value="editor">Puede editar</option></select></label><button className="primary" onClick={() => void createInvite()}>Crear enlace de invitación</button>{inviteUrl && <label>Enlace generado<input value={inviteUrl} readOnly onFocus={event => event.currentTarget.select()} /></label>}<span className="eyebrow">TRANSFERIR PROPIEDAD</span><form onSubmit={transfer}><label>Nuevo propietario<select value={targetUserId} onChange={event => setTargetUserId(event.target.value)} required><option value="">Selecciona un miembro</option>{members.filter(member => member.permission !== 'owner').map(member => <option key={member.id_user} value={member.id_user}>{member.name} · {member.email}</option>)}</select></label><label>Tu contraseña<input type="password" value={transferPassword} onChange={event => setTransferPassword(event.target.value)} required /></label><button className="secondary">Transferir</button></form><button className="danger-icon" onClick={() => void archive()}>Archivar proyecto</button></div>}</section>
+}
+
+function AdminPanel({ notify }: { notify: (value: { text: string; error?: boolean }) => void }) {
+  const [users, setUsers] = useState<Array<{ id_user: number; name: string; email: string; active: boolean }>>([])
+  const [recoveryRequests, setRecoveryRequests] = useState<Array<{ id_request: number; email: string; message: string; status: string }>>([])
+  const [name, setName] = useState(''); const [email, setEmail] = useState(''); const [password, setPassword] = useState('')
+  const load = async () => { const [userData, requestData] = await Promise.all([api<Array<{ id_user: number; name: string; email: string; active: boolean }>>('/admin/users'), api<Array<{ id_request: number; email: string; message: string; status: string }>>('/admin/recovery-requests')]); setUsers(userData); setRecoveryRequests(requestData) }
+  useEffect(() => { void load() }, [])
+  const create = async (event: FormEvent) => { event.preventDefault(); try { await api('/admin/users', { method: 'POST', body: JSON.stringify({ name, email, temporary_password: password }) }); setName(''); setEmail(''); setPassword(''); await load(); notify({ text: 'Usuario creado' }) } catch (value) { notify({ text: value instanceof Error ? value.message : 'No se pudo crear el usuario', error: true }) } }
+  const reset = async (id: number) => { const temporaryPassword = window.prompt('Contraseña temporal (mínimo 12 caracteres)'); if (!temporaryPassword) return; try { await api(`/admin/users/${id}/reset-password`, { method: 'POST', body: JSON.stringify({ temporary_password: temporaryPassword }) }); notify({ text: 'Contraseña temporal actualizada' }); await load() } catch (value) { notify({ text: value instanceof Error ? value.message : 'No se pudo cambiar la contraseña', error: true }) } }
+  return <section className="content two-column"><form className="panel form-card" onSubmit={create}><span className="eyebrow">SUPERADMIN</span><h2>Crear usuario</h2><label>Nombre<input value={name} onChange={event => setName(event.target.value)} required /></label><label>Correo<input type="email" value={email} onChange={event => setEmail(event.target.value)} required /></label><label>Contraseña temporal<input type="password" minLength={12} value={password} onChange={event => setPassword(event.target.value)} required /></label><button className="primary">Crear usuario</button></form><div className="panel"><span className="eyebrow">USUARIOS</span><h2>{users.length} registrados</h2><div className="people-list">{users.map(item => <article key={item.id_user}><strong>{item.name}</strong><span>{item.email}</span><small>{item.active ? 'Activo' : 'Inactivo'}</small><button className="link-button" onClick={() => void reset(item.id_user)}>Restablecer contraseña</button></article>)}</div><span className="eyebrow">RECUPERACIONES PENDIENTES</span>{recoveryRequests.filter(item => item.status === 'pending').map(item => <article key={item.id_request}><strong>{item.email}</strong><span>{item.message}</span></article>)}</div></section>
+}
+
+function ProjectPicker({ user, onChanged, onLogout }: { user: CurrentUser; onChanged: () => Promise<void>; onLogout: () => Promise<void> }) {
+  const [name, setName] = useState('')
+  const [error, setError] = useState('')
+  const create = async (event: FormEvent) => { event.preventDefault(); try { await api('/projects', { method: 'POST', body: JSON.stringify({ name, guest_access_enabled: true, guest_key_required: false }) }); setName(''); await onChanged() } catch (value) { setError(value instanceof Error ? value.message : 'No se pudo crear el proyecto') } }
+  return <main className="auth-shell"><section className="panel form-card"><span className="eyebrow">BIENVENIDO, {user.name}</span><h1>Crea tu primer proyecto</h1><form onSubmit={create}><label>Nombre del proyecto<input value={name} onChange={event => setName(event.target.value)} required /></label>{error && <div className="toast error">{error}</div>}<button className="primary">Crear proyecto</button></form><button className="link-button" onClick={() => void onLogout()}>Salir</button></section></main>
+}
+
+function PasswordChangeScreen({ onChanged }: { onChanged: () => Promise<void> }) {
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [error, setError] = useState('')
+  const submit = async (event: FormEvent) => { event.preventDefault(); try { await api('/auth/change-password', { method: 'POST', body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }) }); await onChanged() } catch (value) { setError(value instanceof Error ? value.message : 'No se pudo cambiar la contraseña') } }
+  return <main className="auth-shell"><form className="panel form-card" onSubmit={submit}><span className="eyebrow">SEGURIDAD</span><h1>Cambia tu contraseña</h1><p>Debes establecer una contraseña personal antes de continuar.</p><label>Contraseña temporal<input type="password" value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} required /></label><label>Nueva contraseña<input type="password" value={newPassword} onChange={event => setNewPassword(event.target.value)} minLength={12} required /></label>{error && <div className="toast error">{error}</div>}<button className="primary">Guardar contraseña</button></form></main>
 }
 
 function NavButton({ active, icon, label, count, onClick }: { active: boolean; icon: string; label: string; count?: number; onClick: () => void }) {
